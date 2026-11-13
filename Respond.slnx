@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="RespondApp/RespondApp.csproj" />
+  <Project Path="RespondAPI/RespondAPI.csproj" />
   <Project Path="RespondData/RespondData.csproj" />
   <Project Path="RespondMetier/RespondMetier.csproj" />
   <Project Path="RespondTests/RespondTests.csproj" />
