@@ -1,0 +1,27 @@
+# Normalisation des fins de ligne.
+#
+# Sans ce fichier, Git enregistre les CRLF de Windows tels quels. Un meme
+# fichier edite sur Windows puis sur Linux, ou simplement passe par un outil
+# qui reecrit ses fins de ligne, apparait alors modifie de bout en bout alors
+# que rien n'a change. C'est ce qui est arrive a la premiere version de ce
+# projet : tous ses fichiers differaient sans qu'une ligne de code ait bouge.
+#
+# Regle : LF dans le depot, fin de ligne native dans la copie de travail.
+* text=auto eol=lf
+
+# Fichiers qui doivent rester en CRLF (outillage Windows).
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+*.ps1   text eol=crlf
+
+# Binaires : jamais convertis.
+*.png   binary
+*.ico   binary
+*.jpg   binary
+*.gif   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.pdf   binary
+*.zip   binary
+*.db    binary
