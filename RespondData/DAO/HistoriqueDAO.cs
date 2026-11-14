@@ -60,13 +60,17 @@ namespace RespondData.DAO
             // EF.Functions.Like maps to the SQL LIKE operator, which SQLite
             // applies case insensitively on ASCII. Doing the filtering in SQL
             // rather than in memory matters once the history grows.
-            string motif = "%" + motCle.Trim() + "%";
+            // Les jokers de LIKE sont echappes : sans cela, une recherche sur
+            // « % » remonterait tout l'historique, et « _ » ferait correspondre
+            // n'importe quel caractere. Ce n'est pas une injection, EF
+            // parametre la requete, mais le resultat serait faux.
+            string motif = "%" + EchapperJokers(motCle.Trim()) + "%";
 
             return this.PourSession(sessionId)
-                .Where(reponse => EF.Functions.Like(reponse.Objet, motif)
-                               || EF.Functions.Like(reponse.Texte, motif)
-                               || EF.Functions.Like(reponse.NomProfil, motif)
-                               || EF.Functions.Like(reponse.NomCleApi, motif))
+                .Where(reponse => EF.Functions.Like(reponse.Objet, motif, "\\")
+                               || EF.Functions.Like(reponse.Texte, motif, "\\")
+                               || EF.Functions.Like(reponse.NomProfil, motif, "\\")
+                               || EF.Functions.Like(reponse.NomCleApi, motif, "\\"))
                 .OrderByDescending(reponse => reponse.Date)
                 .ToList();
         }
@@ -117,6 +121,19 @@ namespace RespondData.DAO
 
             this.context.Set<ReponseGeneree>().RemoveRange(aSupprimer);
             this.context.SaveChanges();
+        }
+
+        /// <summary>
+        /// Escapes the characters LIKE treats as wildcards
+        /// </summary>
+        /// <param name="valeur">the keyword typed by the user</param>
+        /// <returns>the keyword with its wildcards neutralised</returns>
+        private static string EchapperJokers(string valeur)
+        {
+            return valeur
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_");
         }
 
         /// <summary>

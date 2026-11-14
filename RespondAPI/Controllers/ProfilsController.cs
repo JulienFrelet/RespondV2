@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using RespondAPI.Dtos;
 using RespondAPI.Services;
 using RespondMetier.Data.Interfaces;
@@ -60,9 +60,9 @@ namespace RespondAPI.Controllers
         /// </summary>
         /// <returns>the visible profiles</returns>
         [HttpGet]
-        public ActionResult<List<Profil>> Lister()
+        public ActionResult<List<ProfilVueDto>> Lister()
         {
-            return this.Ok(this.profils.Lister(this.SessionCourante()));
+            return this.Ok(ProfilVueDto.Depuis(this.profils.Lister(this.SessionCourante())));
         }
 
         /// <summary>
@@ -71,11 +71,11 @@ namespace RespondAPI.Controllers
         /// <param name="id">the identifier of the profile wanted</param>
         /// <returns>the profile, or 404 when it does not exist or is not visible</returns>
         [HttpGet("{id:int}")]
-        public ActionResult<Profil> Charger(int id)
+        public ActionResult<ProfilVueDto> Charger(int id)
         {
             Profil? profil = this.profils.ChargerParId(id, this.SessionCourante());
 
-            return profil == null ? this.NotFound() : this.Ok(profil);
+            return profil == null ? this.NotFound() : this.Ok(ProfilVueDto.Depuis(profil));
         }
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace RespondAPI.Controllers
         /// <param name="profilDto">the profile to create</param>
         /// <returns>the created profile, with its identifier</returns>
         [HttpPost]
-        public ActionResult<Profil> Creer([FromBody] ProfilDto profilDto)
+        public ActionResult<ProfilVueDto> Creer([FromBody] ProfilDto profilDto)
         {
             string sessionId = this.SessionCourante();
 
@@ -111,7 +111,8 @@ namespace RespondAPI.Controllers
                 return this.Conflict(new { erreur = "Vous avez déjà un profil portant ce nom." });
             }
 
-            return this.CreatedAtAction(nameof(this.Charger), new { id = nouveau.Id }, nouveau);
+            return this.CreatedAtAction(
+                nameof(this.Charger), new { id = nouveau.Id }, ProfilVueDto.Depuis(nouveau));
         }
 
         /// <summary>
@@ -121,7 +122,7 @@ namespace RespondAPI.Controllers
         /// <param name="profilDto">the new values</param>
         /// <returns>the updated profile</returns>
         [HttpPut("{id:int}")]
-        public ActionResult<Profil> Modifier(int id, [FromBody] ProfilDto profilDto)
+        public ActionResult<ProfilVueDto> Modifier(int id, [FromBody] ProfilDto profilDto)
         {
             string sessionId = this.SessionCourante();
 
@@ -143,7 +144,11 @@ namespace RespondAPI.Controllers
                 return this.Conflict(new { erreur = "Vous avez déjà un profil portant ce nom." });
             }
 
-            return this.Ok(this.profils.ChargerParId(id, sessionId));
+            Profil? modifie = this.profils.ChargerParId(id, sessionId);
+
+            return modifie == null
+                ? this.NotFound()
+                : this.Ok(ProfilVueDto.Depuis(modifie));
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using RespondAPI.Dtos;
 using RespondAPI.Services;
 using RespondMetier.Data.Interfaces;
 using RespondMetier.Models;
@@ -61,23 +62,25 @@ namespace RespondAPI.Controllers
         /// <param name="limite">optional maximum number of entries</param>
         /// <returns>the matching entries, most recent first</returns>
         [HttpGet]
-        public ActionResult<List<ReponseGeneree>> Lister(
+        public ActionResult<List<ReponseGenereeVueDto>> Lister(
             [FromQuery] string? recherche, [FromQuery] int? limite)
         {
             string sessionId = this.session.ObtenirOuCreer(this.HttpContext);
 
             if (!string.IsNullOrWhiteSpace(recherche))
             {
-                return this.Ok(this.historique.Rechercher(sessionId, recherche));
+                return this.Ok(ReponseGenereeVueDto.Depuis(
+                    this.historique.Rechercher(sessionId, recherche)));
             }
 
             if (limite.HasValue)
             {
-                return this.Ok(this.historique.ListerPremiers(
-                    sessionId, Math.Min(limite.Value, TaillePageMaximale)));
+                return this.Ok(ReponseGenereeVueDto.Depuis(this.historique.ListerPremiers(
+                    sessionId, Math.Min(limite.Value, TaillePageMaximale))));
             }
 
-            return this.Ok(this.historique.ListerPremiers(sessionId, TaillePageMaximale));
+            return this.Ok(ReponseGenereeVueDto.Depuis(
+                this.historique.ListerPremiers(sessionId, TaillePageMaximale)));
         }
 
         /// <summary>

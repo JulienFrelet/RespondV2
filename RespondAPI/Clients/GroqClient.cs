@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -111,7 +111,22 @@ namespace RespondAPI.Clients
             using HttpRequestMessage requete = new HttpRequestMessage(
                 HttpMethod.Post, this.options.UrlDeBase.TrimEnd('/') + "/chat/completions");
 
-            requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", this.cle);
+            try
+            {
+                requete.Headers.Authorization = new AuthenticationHeaderValue("Bearer", this.cle);
+            }
+            catch (FormatException)
+            {
+                // .NET refuse les retours ligne et les caracteres nuls dans une
+                // valeur d'en-tete, ce qui bloque toute tentative d'injection.
+                // Sans cette traduction l'exception echappe au controleur et
+                // devient un 500 opaque : une cle malformee est une cle
+                // refusee, pas une panne du serveur. Le message ne reprend
+                // jamais la valeur fautive.
+                throw new ErreurCleRefusee(
+                    "La clé API contient des caractères interdits.");
+            }
+
             requete.Content = new StringContent(
                 ConstruireCorps(prompt, modele, this.options.Temperature),
                 Encoding.UTF8,

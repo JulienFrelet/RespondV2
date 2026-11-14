@@ -489,3 +489,6 @@ prompt/
 
 # Outillage local, propre a la machine et a l'editeur
 .claude/
+
+# Cles de signature des cookies de session : a traiter comme un secret
+cles-protection/

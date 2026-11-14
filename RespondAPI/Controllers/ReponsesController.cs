@@ -66,6 +66,12 @@ namespace RespondAPI.Controllers
         /// </remarks>
         public const string EnTeteCle = "X-Cle-Api";
 
+        /// <summary>
+        /// Longest key accepted. Bounds what an anonymous visitor can push
+        /// through an unauthenticated endpoint.
+        /// </summary>
+        private const int LongueurMaximaleCle = 200;
+
         #endregion
 
         #region Methods
@@ -88,6 +94,19 @@ namespace RespondAPI.Controllers
             if (profil == null)
             {
                 return this.NotFound(new { erreur = "Ce profil n'existe pas." });
+            }
+
+            // Une cle fournie mais malformee doit etre refusee explicitement.
+            // Retomber en silence sur la cle de demonstration ferait croire a
+            // l'utilisateur qu'il consomme son propre quota alors qu'il
+            // consomme celui du serveur.
+            if (this.CleFournieMaisInvalide())
+            {
+                return this.BadRequest(new
+                {
+                    erreur = "La clé API fournie contient des caractères interdits "
+                        + "ou dépasse la longueur autorisée.",
+                });
             }
 
             CleApi? cle = this.LireCleUtilisateur() ?? this.LireCleDemo();
@@ -167,11 +186,65 @@ namespace RespondAPI.Controllers
                 return null;
             }
 
+            // Une cle venant d'un en-tete est une entree non fiable qui finira
+            // dans un en-tete sortant. .NET refuse deja les retours ligne, mais
+            // il le fait en levant une FormatException : la rejeter ici donne
+            // un 400 explicite plutot qu'un 500 opaque.
+            if (!EstCleBienFormee(secret))
+            {
+                return null;
+            }
+
             CleApi cle = new CleApi();
             cle.Libelle = "Ma clé";
             cle.Fournisseur = Fournisseur.Groq;
             cle.Secret = secret;
             return cle;
+        }
+
+        /// <summary>
+        /// Tells whether a key was supplied but cannot be used
+        /// </summary>
+        /// <returns>true when the header is present and its value is malformed</returns>
+        private bool CleFournieMaisInvalide()
+        {
+            if (!this.Request.Headers.TryGetValue(EnTeteCle, out StringValues valeurs))
+            {
+                return false;
+            }
+
+            string secret = valeurs.ToString().Trim();
+
+            return secret.Length > 0 && !EstCleBienFormee(secret);
+        }
+
+        /// <summary>
+        /// Checks that a visitor supplied key is safe to put in an HTTP header
+        /// </summary>
+        /// <remarks>
+        /// Only visible ASCII is accepted. Every provider issues keys in that
+        /// range, so the rule rejects nothing legitimate while excluding
+        /// control characters, line breaks and anything that could alter the
+        /// shape of the outbound request.
+        /// </remarks>
+        /// <param name="secret">the key received</param>
+        /// <returns>true when the key can be used as a header value</returns>
+        private static bool EstCleBienFormee(string secret)
+        {
+            if (secret.Length > LongueurMaximaleCle)
+            {
+                return false;
+            }
+
+            foreach (char caractere in secret)
+            {
+                if (caractere < '!' || caractere > '~')
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>

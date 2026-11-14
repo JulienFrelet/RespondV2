@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
@@ -46,7 +47,24 @@ builder.Services.AddScoped<InitialiseurBaseDeDonnees>();
 // Identifie un visiteur sans compte. Le cookie porte une valeur signee par la
 // pile de protection des donnees : un identifiant brut serait forgeable, et
 // n'importe qui pourrait lire l'historique d'un autre en recopiant sa valeur.
-builder.Services.AddDataProtection();
+// Les cles de signature sont persistees dans un dossier configurable.
+//
+// Par defaut, ASP.NET les range dans le profil de l'utilisateur courant. Dans
+// un conteneur, ce dossier est ephemere : au moindre redeploiement les cles
+// changent, tous les cookies de session deviennent invalides, et chaque
+// visiteur perd son historique. Avec plusieurs instances, chacune aurait ses
+// propres cles et un visiteur basculerait d'identite a chaque requete.
+//
+// Le chemin pointe vers un volume persistant en production. Le dossier doit
+// etre traite comme un secret : qui le lit peut forger des cookies de session.
+string dossierCles = builder.Configuration["Respond:DossierCles"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "cles-protection");
+
+Directory.CreateDirectory(dossierCles);
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dossierCles))
+    .SetApplicationName("Respond");
 builder.Services.AddSingleton<ISessionVisiteur, SessionVisiteur>();
 
 // Register DAOs.
