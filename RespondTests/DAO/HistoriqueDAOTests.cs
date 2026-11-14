@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using RespondData;
 using RespondData.DAO;
@@ -14,6 +14,9 @@ namespace RespondTests.DAO
     {
         private readonly SqliteConnection connexion;
         private readonly DbContextOptions<AppDbContext> options;
+
+        private const string Session = "session-visiteur-a";
+        private const string AutreSession = "session-visiteur-b";
 
         private static readonly DateTime dateTest = new DateTime(2026, 11, 14, 9, 0, 0);
 
@@ -42,7 +45,8 @@ namespace RespondTests.DAO
         /// Adds a history entry whose date is offset from a fixed reference,
         /// so that ordering is deterministic and does not depend on the clock
         /// </summary>
-        private int Inserer(string objet, int decalageHeures, string texte = "Bonjour, voici la reponse.")
+        private int Inserer(string objet, int decalageHeures,
+            string texte = "Bonjour, voici la reponse.", string session = Session)
         {
             using AppDbContext context = NouveauContexte();
 
@@ -52,6 +56,7 @@ namespace RespondTests.DAO
             reponse.Texte = texte;
             reponse.NomProfil = "Accueil";
             reponse.NomCleApi = "Groq principal";
+            reponse.SessionId = session;
 
             new HistoriqueDAO(context).Inserer(reponse);
             return reponse.Id;
@@ -75,7 +80,7 @@ namespace RespondTests.DAO
         {
             using AppDbContext context = NouveauContexte();
 
-            Assert.Empty(new HistoriqueDAO(context).Lister());
+            Assert.Empty(new HistoriqueDAO(context).Lister(Session));
         }
 
         /// <summary>
@@ -89,7 +94,7 @@ namespace RespondTests.DAO
             Inserer("Intermediaire", 2);
 
             using AppDbContext context = NouveauContexte();
-            List<ReponseGeneree> resultat = new HistoriqueDAO(context).Lister();
+            List<ReponseGeneree> resultat = new HistoriqueDAO(context).Lister(Session);
 
             Assert.Equal(["Recente", "Intermediaire", "Ancienne"], resultat.Select(reponse => reponse.Objet));
         }
@@ -109,7 +114,7 @@ namespace RespondTests.DAO
             Inserer("Trois", 3);
 
             using AppDbContext context = NouveauContexte();
-            List<ReponseGeneree> resultat = new HistoriqueDAO(context).ListerPremiers(2);
+            List<ReponseGeneree> resultat = new HistoriqueDAO(context).ListerPremiers(Session, 2);
 
             Assert.Equal(["Trois", "Deux"], resultat.Select(reponse => reponse.Objet));
         }
@@ -126,7 +131,7 @@ namespace RespondTests.DAO
 
             using AppDbContext context = NouveauContexte();
 
-            Assert.Empty(new HistoriqueDAO(context).ListerPremiers(nbMax));
+            Assert.Empty(new HistoriqueDAO(context).ListerPremiers(Session, nbMax));
         }
 
         #endregion
@@ -143,7 +148,7 @@ namespace RespondTests.DAO
             Inserer("Demande de devis", 2);
 
             using AppDbContext context = NouveauContexte();
-            List<ReponseGeneree> resultat = new HistoriqueDAO(context).Rechercher("LIVRAISON");
+            List<ReponseGeneree> resultat = new HistoriqueDAO(context).Rechercher(Session, "LIVRAISON");
 
             Assert.Single(resultat);
             Assert.Equal("Retard de livraison", resultat[0].Objet);
@@ -159,7 +164,7 @@ namespace RespondTests.DAO
             Inserer("Deux", 2, "Voici notre devis.");
 
             using AppDbContext context = NouveauContexte();
-            List<ReponseGeneree> resultat = new HistoriqueDAO(context).Rechercher("colis");
+            List<ReponseGeneree> resultat = new HistoriqueDAO(context).Rechercher(Session, "colis");
 
             Assert.Single(resultat);
             Assert.Equal("Un", resultat[0].Objet);
@@ -178,7 +183,7 @@ namespace RespondTests.DAO
 
             using AppDbContext context = NouveauContexte();
 
-            Assert.Equal(2, new HistoriqueDAO(context).Rechercher(motCle).Count);
+            Assert.Equal(2, new HistoriqueDAO(context).Rechercher(Session, motCle).Count);
         }
 
         #endregion
@@ -197,11 +202,11 @@ namespace RespondTests.DAO
 
             using (AppDbContext context = NouveauContexte())
             {
-                new HistoriqueDAO(context).LimiterA(2);
+                new HistoriqueDAO(context).LimiterA(Session, 2);
             }
 
             using AppDbContext verification = NouveauContexte();
-            List<ReponseGeneree> restantes = new HistoriqueDAO(verification).Lister();
+            List<ReponseGeneree> restantes = new HistoriqueDAO(verification).Lister(Session);
 
             Assert.Equal(["Recente", "Intermediaire"], restantes.Select(reponse => reponse.Objet));
         }
@@ -216,12 +221,12 @@ namespace RespondTests.DAO
 
             using (AppDbContext context = NouveauContexte())
             {
-                new HistoriqueDAO(context).LimiterA(20);
+                new HistoriqueDAO(context).LimiterA(Session, 20);
             }
 
             using AppDbContext verification = NouveauContexte();
 
-            Assert.Single(new HistoriqueDAO(verification).Lister());
+            Assert.Single(new HistoriqueDAO(verification).Lister(Session));
         }
 
         /// <summary>
@@ -235,12 +240,12 @@ namespace RespondTests.DAO
 
             using (AppDbContext context = NouveauContexte())
             {
-                new HistoriqueDAO(context).LimiterA(0);
+                new HistoriqueDAO(context).LimiterA(Session, 0);
             }
 
             using AppDbContext verification = NouveauContexte();
 
-            Assert.Empty(new HistoriqueDAO(verification).Lister());
+            Assert.Empty(new HistoriqueDAO(verification).Lister(Session));
         }
 
         /// <summary>
@@ -252,7 +257,7 @@ namespace RespondTests.DAO
             using AppDbContext context = NouveauContexte();
             HistoriqueDAO dao = new HistoriqueDAO(context);
 
-            Assert.Throws<ArgumentOutOfRangeException>(() => dao.LimiterA(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => dao.LimiterA(Session, -1));
         }
 
         #endregion
@@ -270,11 +275,11 @@ namespace RespondTests.DAO
 
             using (AppDbContext context = NouveauContexte())
             {
-                new HistoriqueDAO(context).Supprimer(id);
+                new HistoriqueDAO(context).Supprimer(id, Session);
             }
 
             using AppDbContext verification = NouveauContexte();
-            List<ReponseGeneree> restantes = new HistoriqueDAO(verification).Lister();
+            List<ReponseGeneree> restantes = new HistoriqueDAO(verification).Lister(Session);
 
             Assert.Single(restantes);
             Assert.Equal("Deux", restantes[0].Objet);
@@ -289,9 +294,102 @@ namespace RespondTests.DAO
             using AppDbContext context = NouveauContexte();
             HistoriqueDAO dao = new HistoriqueDAO(context);
 
-            Assert.Throws<InvalidOperationException>(() => dao.Supprimer(404));
+            Assert.Throws<InvalidOperationException>(() => dao.Supprimer(404, Session));
         }
 
         #endregion
+
+        #region Cloisonnement par visiteur
+
+        /// <summary>
+        /// A visitor never sees another visitor's entries. This is the most
+        /// important test of the class: the history holds the emails people
+        /// pasted, and the application has no accounts to separate them.
+        /// </summary>
+        [Fact]
+        public void UnVisiteurNeVoitPasLHistoriqueDUnAutre()
+        {
+            Inserer("A moi", 1, session: Session);
+            Inserer("A l'autre", 2, session: AutreSession);
+
+            using AppDbContext context = NouveauContexte();
+            List<ReponseGeneree> miennes = new HistoriqueDAO(context).Lister(Session);
+
+            Assert.Single(miennes);
+            Assert.Equal("A moi", miennes[0].Objet);
+        }
+
+        /// <summary>
+        /// The search never reaches across visitors either
+        /// </summary>
+        [Fact]
+        public void RechercheNeTraversePasLesSessions()
+        {
+            Inserer("Secret", 1, "Information confidentielle", AutreSession);
+
+            using AppDbContext context = NouveauContexte();
+
+            Assert.Empty(new HistoriqueDAO(context).Rechercher(Session, "confidentielle"));
+        }
+
+        /// <summary>
+        /// Deleting another visitor's entry is refused, and reported as absent
+        /// so that its existence stays unknowable
+        /// </summary>
+        [Fact]
+        public void SupprimerLEntreeDUnAutreEstRefuse()
+        {
+            int id = Inserer("A l'autre", 1, session: AutreSession);
+
+            using AppDbContext context = NouveauContexte();
+            HistoriqueDAO dao = new HistoriqueDAO(context);
+
+            Assert.Throws<InvalidOperationException>(() => dao.Supprimer(id, Session));
+
+            using AppDbContext verification = NouveauContexte();
+            Assert.Single(new HistoriqueDAO(verification).Lister(AutreSession));
+        }
+
+        /// <summary>
+        /// Trimming one visitor's history leaves another's untouched: a busy
+        /// visitor must not push someone else's entries out
+        /// </summary>
+        [Fact]
+        public void LimiterNeTouchePasLesAutresSessions()
+        {
+            Inserer("A moi 1", 1, session: Session);
+            Inserer("A moi 2", 2, session: Session);
+            Inserer("A l'autre", 3, session: AutreSession);
+
+            using (AppDbContext context = NouveauContexte())
+            {
+                new HistoriqueDAO(context).LimiterA(Session, 1);
+            }
+
+            using AppDbContext verification = NouveauContexte();
+            HistoriqueDAO dao = new HistoriqueDAO(verification);
+
+            Assert.Single(dao.Lister(Session));
+            Assert.Single(dao.Lister(AutreSession));
+        }
+
+        /// <summary>
+        /// A blank session matches nothing rather than everything: a caller
+        /// that forgot to pass one must not receive the whole table
+        /// </summary>
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void SessionVideNeRenvoieRien(string session)
+        {
+            Inserer("A moi", 1, session: Session);
+
+            using AppDbContext context = NouveauContexte();
+
+            Assert.Empty(new HistoriqueDAO(context).Lister(session));
+        }
+
+        #endregion
+
     }
 }

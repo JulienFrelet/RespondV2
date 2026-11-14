@@ -1,7 +1,8 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using RespondData;
 using RespondData.DAO;
+using RespondMetier.Exceptions;
 using RespondMetier.Models;
 
 namespace RespondTests.DAO
@@ -12,6 +13,9 @@ namespace RespondTests.DAO
     /// </summary>
     public class ProfilDAOTests : IDisposable
     {
+        private const string Session = "session-visiteur-a";
+        private const string AutreSession = "session-visiteur-b";
+
         private readonly SqliteConnection connexion;
         private readonly DbContextOptions<AppDbContext> options;
 
@@ -40,7 +44,7 @@ namespace RespondTests.DAO
         /// <summary>
         /// Builds a usable profile without touching the database
         /// </summary>
-        private static Profil Construire(string nom)
+        private static Profil Construire(string nom, string session = Session)
         {
             Profil profil = new Profil();
             profil.Nom = nom;
@@ -51,16 +55,17 @@ namespace RespondTests.DAO
             profil.Signature.Nom = "Julien";
             profil.Signature.Telephone = "03 80 00 00 00";
             profil.Signature.InclureTelephone = false;
+            profil.SessionId = session;
             return profil;
         }
 
         /// <summary>
         /// Adds a profile directly in the database and returns its generated id
         /// </summary>
-        private int Inserer(string nom)
+        private int Inserer(string nom, string session = Session)
         {
             using AppDbContext context = NouveauContexte();
-            Profil profil = Construire(nom);
+            Profil profil = Construire(nom, session);
             new ProfilDAO(context).Inserer(profil);
             return profil.Id;
         }
@@ -83,7 +88,7 @@ namespace RespondTests.DAO
         {
             using AppDbContext context = NouveauContexte();
 
-            List<Profil> resultat = new ProfilDAO(context).Lister();
+            List<Profil> resultat = new ProfilDAO(context).Lister(Session);
 
             Assert.Empty(resultat);
         }
@@ -99,7 +104,7 @@ namespace RespondTests.DAO
             Inserer("Facturation");
 
             using AppDbContext context = NouveauContexte();
-            List<Profil> resultat = new ProfilDAO(context).Lister();
+            List<Profil> resultat = new ProfilDAO(context).Lister(Session);
 
             Assert.Equal(["Accueil", "Facturation", "Service technique"], resultat.Select(profil => profil.Nom));
         }
@@ -128,7 +133,7 @@ namespace RespondTests.DAO
             int id = Inserer("Accueil");
 
             using AppDbContext context = NouveauContexte();
-            Profil? relu = new ProfilDAO(context).ChargerParId(id);
+            Profil? relu = new ProfilDAO(context).ChargerParId(id, Session);
 
             Assert.NotNull(relu);
             Assert.Equal("Julien", relu.Signature.Nom);
@@ -163,7 +168,7 @@ namespace RespondTests.DAO
         {
             using AppDbContext context = NouveauContexte();
 
-            Profil? resultat = new ProfilDAO(context).ChargerParId(404);
+            Profil? resultat = new ProfilDAO(context).ChargerParId(404, Session);
 
             Assert.Null(resultat);
         }
@@ -187,11 +192,11 @@ namespace RespondTests.DAO
                 modifie.Ton = "formel et professionnel";
                 modifie.Signature.Email = "contact@exemple.fr";
 
-                new ProfilDAO(context).MettreAJour(modifie);
+                new ProfilDAO(context).MettreAJour(modifie, Session);
             }
 
             using AppDbContext verification = NouveauContexte();
-            Profil? relu = new ProfilDAO(verification).ChargerParId(id);
+            Profil? relu = new ProfilDAO(verification).ChargerParId(id, Session);
 
             Assert.NotNull(relu);
             Assert.Equal("Accueil renomme", relu.Nom);
@@ -211,7 +216,7 @@ namespace RespondTests.DAO
             Profil absent = Construire("Fantome");
             absent.Id = 404;
 
-            Assert.Throws<InvalidOperationException>(() => dao.MettreAJour(absent));
+            Assert.Throws<InvalidOperationException>(() => dao.MettreAJour(absent, Session));
         }
 
         #endregion
@@ -228,12 +233,12 @@ namespace RespondTests.DAO
 
             using (AppDbContext context = NouveauContexte())
             {
-                new ProfilDAO(context).Supprimer(id);
+                new ProfilDAO(context).Supprimer(id, Session);
             }
 
             using AppDbContext verification = NouveauContexte();
 
-            Assert.Empty(new ProfilDAO(verification).Lister());
+            Assert.Empty(new ProfilDAO(verification).Lister(Session));
         }
 
         /// <summary>
@@ -245,9 +250,122 @@ namespace RespondTests.DAO
             using AppDbContext context = NouveauContexte();
             ProfilDAO dao = new ProfilDAO(context);
 
-            Assert.Throws<InvalidOperationException>(() => dao.Supprimer(404));
+            Assert.Throws<InvalidOperationException>(() => dao.Supprimer(404, Session));
         }
 
         #endregion
+
+        #region Cloisonnement par visiteur
+
+        /// <summary>
+        /// A visitor never sees another visitor's profiles
+        /// </summary>
+        [Fact]
+        public void UnVisiteurNeVoitPasLesProfilsDUnAutre()
+        {
+            Inserer("A moi", Session);
+            Inserer("A l'autre", AutreSession);
+
+            using AppDbContext context = NouveauContexte();
+            List<Profil> miens = new ProfilDAO(context).Lister(Session);
+
+            Assert.Single(miens);
+            Assert.Equal("A moi", miens[0].Nom);
+        }
+
+        /// <summary>
+        /// Demonstration profiles, marked by an empty session, are visible to everyone
+        /// </summary>
+        [Fact]
+        public void ProfilsDeDemonstrationVisiblesParTous()
+        {
+            Inserer("Demo", string.Empty);
+
+            using AppDbContext context = NouveauContexte();
+            ProfilDAO dao = new ProfilDAO(context);
+
+            Assert.Single(dao.Lister(Session));
+            Assert.Single(dao.Lister(AutreSession));
+        }
+
+        /// <summary>
+        /// A demonstration profile cannot be modified: it is shared, so letting
+        /// anyone rename it would break the demonstration for everyone after
+        /// </summary>
+        [Fact]
+        public void ProfilDeDemonstrationNonModifiable()
+        {
+            int id = Inserer("Demo", string.Empty);
+
+            using AppDbContext context = NouveauContexte();
+            ProfilDAO dao = new ProfilDAO(context);
+
+            Profil modifie = Construire("Demo renomme");
+            modifie.Id = id;
+
+            Assert.Throws<ErreurProfilEnLectureSeule>(() => dao.MettreAJour(modifie, Session));
+        }
+
+        /// <summary>
+        /// A demonstration profile cannot be deleted either
+        /// </summary>
+        [Fact]
+        public void ProfilDeDemonstrationNonSupprimable()
+        {
+            int id = Inserer("Demo", string.Empty);
+
+            using AppDbContext context = NouveauContexte();
+            ProfilDAO dao = new ProfilDAO(context);
+
+            Assert.Throws<ErreurProfilEnLectureSeule>(() => dao.Supprimer(id, Session));
+        }
+
+        /// <summary>
+        /// Another visitor's profile is reported as absent, not as forbidden
+        /// </summary>
+        [Fact]
+        public void ProfilDUnAutreRapporteCommeAbsent()
+        {
+            int id = Inserer("A l'autre", AutreSession);
+
+            using AppDbContext context = NouveauContexte();
+
+            Assert.Null(new ProfilDAO(context).ChargerParId(id, Session));
+        }
+
+        /// <summary>
+        /// Two visitors may each name a profile the same way: the name is
+        /// unique per visitor, not across the whole table
+        /// </summary>
+        [Fact]
+        public void MemeNomAutorisePourDeuxVisiteurs()
+        {
+            Inserer("Service client", Session);
+            Inserer("Service client", AutreSession);
+
+            using AppDbContext context = NouveauContexte();
+
+            Assert.Single(new ProfilDAO(context).Lister(Session));
+        }
+
+        /// <summary>
+        /// A blank session grants nothing, in particular no write access to the
+        /// demonstration profiles whose session is also empty
+        /// </summary>
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void SessionVideNAccordeAucunDroit(string session)
+        {
+            int id = Inserer("Demo", string.Empty);
+
+            using AppDbContext context = NouveauContexte();
+            ProfilDAO dao = new ProfilDAO(context);
+
+            Assert.Throws<ErreurProfilEnLectureSeule>(() => dao.Supprimer(id, session));
+        }
+
+        #endregion
+
     }
 }

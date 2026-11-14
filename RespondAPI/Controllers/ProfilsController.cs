@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using RespondAPI.Services;
 using RespondMetier.Data.Interfaces;
 using RespondMetier.Models;
 
@@ -14,6 +15,7 @@ namespace RespondAPI.Controllers
         #region Properties
 
         private readonly IProfilDAO profils;
+        private readonly ISessionVisiteur session;
 
         #endregion
 
@@ -23,9 +25,11 @@ namespace RespondAPI.Controllers
         /// Initializes a new instance of the ProfilsController class
         /// </summary>
         /// <param name="profils">the profile data access</param>
-        public ProfilsController(IProfilDAO profils)
+        /// <param name="session">supplies the visitor's anonymous identifier</param>
+        public ProfilsController(IProfilDAO profils, ISessionVisiteur session)
         {
             this.profils = profils;
+            this.session = session;
         }
 
         #endregion
@@ -39,7 +43,7 @@ namespace RespondAPI.Controllers
         [HttpGet]
         public ActionResult<List<Profil>> Lister()
         {
-            return this.Ok(this.profils.Lister());
+            return this.Ok(this.profils.Lister(this.session.ObtenirOuCreer(this.HttpContext)));
         }
 
         /// <summary>
@@ -50,7 +54,8 @@ namespace RespondAPI.Controllers
         [HttpGet("{id:int}")]
         public ActionResult<Profil> Charger(int id)
         {
-            Profil? profil = this.profils.ChargerParId(id);
+            Profil? profil = this.profils.ChargerParId(
+                id, this.session.ObtenirOuCreer(this.HttpContext));
 
             return profil == null ? this.NotFound() : this.Ok(profil);
         }

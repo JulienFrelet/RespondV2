@@ -4,13 +4,19 @@ using RespondMetier.Models;
 namespace RespondTests.Fakes
 {
     /// <summary>
-    /// History storage replaced by an in-memory list
+    /// History storage replaced by an in-memory list.
     /// </summary>
+    /// <remarks>
+    /// Scoping by session is reproduced faithfully rather than ignored: a fake
+    /// that returns everything would let a test pass while the real isolation
+    /// was broken.
+    /// </remarks>
     internal class FauxHistoriqueDAO : IHistoriqueDAO
     {
         private readonly List<ReponseGeneree> entrees;
         private int prochainId;
         private int derniereLimiteAppliquee;
+        private string derniereSessionLimitee;
 
         /// <summary>
         /// Initializes the fake with an empty history
@@ -20,10 +26,12 @@ namespace RespondTests.Fakes
             this.entrees = new List<ReponseGeneree>();
             this.prochainId = 1;
             this.derniereLimiteAppliquee = -1;
+            this.derniereSessionLimitee = string.Empty;
         }
 
         /// <summary>
-        /// Gets the entries currently stored
+        /// Gets every entry stored, all sessions mixed. Used by tests to check
+        /// what was written, never to simulate a read.
         /// </summary>
         public List<ReponseGeneree> Entrees
         {
@@ -31,8 +39,7 @@ namespace RespondTests.Fakes
         }
 
         /// <summary>
-        /// Gets the last limit the service asked for, -1 when never asked.
-        /// Lets a test check that trimming was requested at all.
+        /// Gets the last limit the service asked for, -1 when never asked
         /// </summary>
         public int DerniereLimiteAppliquee
         {
@@ -40,37 +47,53 @@ namespace RespondTests.Fakes
         }
 
         /// <summary>
-        /// Returns every entry, most recent first
+        /// Gets the session the last trim was applied to
         /// </summary>
-        /// <returns>the stored entries</returns>
-        public List<ReponseGeneree> Lister()
+        public string DerniereSessionLimitee
         {
-            return this.entrees.OrderByDescending(entree => entree.Date).ToList();
+            get { return this.derniereSessionLimitee; }
         }
 
         /// <summary>
-        /// Returns the most recent entries
+        /// Returns this visitor's entries, most recent first
         /// </summary>
+        /// <param name="sessionId">the visitor's identifier</param>
+        /// <returns>the stored entries</returns>
+        public List<ReponseGeneree> Lister(string sessionId)
+        {
+            return this.entrees
+                .Where(entree => entree.SessionId == sessionId)
+                .OrderByDescending(entree => entree.Date)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Returns this visitor's most recent entries
+        /// </summary>
+        /// <param name="sessionId">the visitor's identifier</param>
         /// <param name="nbMax">the maximum number wanted</param>
         /// <returns>the requested entries</returns>
-        public List<ReponseGeneree> ListerPremiers(int nbMax)
+        public List<ReponseGeneree> ListerPremiers(string sessionId, int nbMax)
         {
-            return nbMax <= 0 ? new List<ReponseGeneree>() : this.Lister().Take(nbMax).ToList();
+            return nbMax <= 0
+                ? new List<ReponseGeneree>()
+                : this.Lister(sessionId).Take(nbMax).ToList();
         }
 
         /// <summary>
-        /// Searches entries on subject and body
+        /// Searches this visitor's entries on subject and body
         /// </summary>
+        /// <param name="sessionId">the visitor's identifier</param>
         /// <param name="motCle">the keyword searched</param>
         /// <returns>the matching entries</returns>
-        public List<ReponseGeneree> Rechercher(string motCle)
+        public List<ReponseGeneree> Rechercher(string sessionId, string motCle)
         {
             if (string.IsNullOrWhiteSpace(motCle))
             {
-                return this.Lister();
+                return this.Lister(sessionId);
             }
 
-            return this.Lister()
+            return this.Lister(sessionId)
                 .Where(entree => entree.Objet.Contains(motCle, StringComparison.OrdinalIgnoreCase)
                               || entree.Texte.Contains(motCle, StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -88,37 +111,42 @@ namespace RespondTests.Fakes
         }
 
         /// <summary>
-        /// Removes a single entry
+        /// Removes one of this visitor's entries
         /// </summary>
         /// <param name="id">the identifier of the entry to remove</param>
-        public void Supprimer(int id)
+        /// <param name="sessionId">the visitor's identifier</param>
+        public void Supprimer(int id, string sessionId)
         {
-            ReponseGeneree? existante = this.entrees.FirstOrDefault(entree => entree.Id == id);
+            ReponseGeneree? existante = this.entrees.FirstOrDefault(
+                entree => entree.Id == id && entree.SessionId == sessionId);
 
             if (existante == null)
             {
                 throw new InvalidOperationException(
-                    "Impossible de supprimer une entree d'historique qui n'existe pas.");
+                    "Cette entree d'historique n'existe pas.");
             }
 
             this.entrees.Remove(existante);
         }
 
         /// <summary>
-        /// Keeps only the most recent entries, and records the limit asked for
+        /// Keeps only this visitor's most recent entries, and records the call
         /// </summary>
+        /// <param name="sessionId">the visitor's identifier</param>
         /// <param name="nbMax">the number of entries to keep</param>
-        public void LimiterA(int nbMax)
+        public void LimiterA(string sessionId, int nbMax)
         {
             this.derniereLimiteAppliquee = nbMax;
+            this.derniereSessionLimitee = sessionId;
 
             if (nbMax < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(nbMax));
             }
 
-            List<ReponseGeneree> aGarder = this.Lister().Take(nbMax).ToList();
-            this.entrees.Clear();
+            List<ReponseGeneree> aGarder = this.Lister(sessionId).Take(nbMax).ToList();
+
+            this.entrees.RemoveAll(entree => entree.SessionId == sessionId);
             this.entrees.AddRange(aGarder);
         }
     }

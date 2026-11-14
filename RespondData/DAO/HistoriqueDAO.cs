@@ -30,41 +30,39 @@ namespace RespondData.DAO
 
         #region Methods
 
-        public List<ReponseGeneree> Lister()
+        public List<ReponseGeneree> Lister(string sessionId)
         {
-            return this.context.Set<ReponseGeneree>()
+            return this.PourSession(sessionId)
                 .OrderByDescending(reponse => reponse.Date)
                 .ToList();
         }
 
-        public List<ReponseGeneree> ListerPremiers(int nbMax)
+        public List<ReponseGeneree> ListerPremiers(string sessionId, int nbMax)
         {
             if (nbMax <= 0)
             {
                 return new List<ReponseGeneree>();
             }
 
-            return this.context.Set<ReponseGeneree>()
+            return this.PourSession(sessionId)
                 .OrderByDescending(reponse => reponse.Date)
                 .Take(nbMax)
                 .ToList();
         }
 
-        public List<ReponseGeneree> Rechercher(string motCle)
+        public List<ReponseGeneree> Rechercher(string sessionId, string motCle)
         {
             if (string.IsNullOrWhiteSpace(motCle))
             {
-                return this.Lister();
+                return this.Lister(sessionId);
             }
-
-            string recherche = motCle.Trim();
 
             // EF.Functions.Like maps to the SQL LIKE operator, which SQLite
             // applies case insensitively on ASCII. Doing the filtering in SQL
             // rather than in memory matters once the history grows.
-            string motif = "%" + recherche + "%";
+            string motif = "%" + motCle.Trim() + "%";
 
-            return this.context.Set<ReponseGeneree>()
+            return this.PourSession(sessionId)
                 .Where(reponse => EF.Functions.Like(reponse.Objet, motif)
                                || EF.Functions.Like(reponse.Texte, motif)
                                || EF.Functions.Like(reponse.NomProfil, motif)
@@ -79,33 +77,35 @@ namespace RespondData.DAO
             this.context.SaveChanges();
         }
 
-        public void Supprimer(int id)
+        public void Supprimer(int id, string sessionId)
         {
-            ReponseGeneree? existante = this.context.Set<ReponseGeneree>()
+            ReponseGeneree? existante = this.PourSession(sessionId)
                 .FirstOrDefault(reponse => reponse.Id == id);
 
             if (existante == null)
             {
+                // Another visitor's entry is reported as absent rather than
+                // forbidden: its existence must not be observable.
                 throw new InvalidOperationException(
-                    "Impossible de supprimer une entree d'historique qui n'existe pas.");
+                    "Cette entrée d'historique n'existe pas.");
             }
 
             this.context.Set<ReponseGeneree>().Remove(existante);
             this.context.SaveChanges();
         }
 
-        public void LimiterA(int nbMax)
+        public void LimiterA(string sessionId, int nbMax)
         {
             if (nbMax < 0)
             {
                 throw new ArgumentOutOfRangeException(
-                    nameof(nbMax), "La taille maximale de l'historique ne peut pas etre negative.");
+                    nameof(nbMax), "La taille maximale de l'historique ne peut pas être négative.");
             }
 
             // Only the entries beyond the limit are loaded, not the whole
-            // history: Skip is translated to SQL, so a history of ten thousand
-            // entries trimmed to twenty reads twenty rows, not ten thousand.
-            List<ReponseGeneree> aSupprimer = this.context.Set<ReponseGeneree>()
+            // history, and only this visitor's: one busy visitor must never
+            // push another's entries out.
+            List<ReponseGeneree> aSupprimer = this.PourSession(sessionId)
                 .OrderByDescending(reponse => reponse.Date)
                 .Skip(nbMax)
                 .ToList();
@@ -119,7 +119,27 @@ namespace RespondData.DAO
             this.context.SaveChanges();
         }
 
+        /// <summary>
+        /// Restricts every query to the entries of one visitor
+        /// </summary>
+        /// <remarks>
+        /// Going through this single method means no query can accidentally
+        /// omit the filter: the scoping is written once instead of being
+        /// repeated in six places where one could be forgotten.
+        /// </remarks>
+        /// <param name="sessionId">the visitor's anonymous identifier</param>
+        /// <returns>the query restricted to that visitor</returns>
+        private IQueryable<ReponseGeneree> PourSession(string sessionId)
+        {
+            // A blank identifier matches nothing rather than everything.
+            string session = string.IsNullOrWhiteSpace(sessionId)
+                ? "\u0000-aucune-session"
+                : sessionId;
+
+            return this.context.Set<ReponseGeneree>()
+                .Where(reponse => reponse.SessionId == session);
+        }
+
         #endregion
     }
 }
-

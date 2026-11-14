@@ -1,4 +1,4 @@
-namespace RespondMetier.Models
+﻿namespace RespondMetier.Models
 {
     /// <summary>
     /// Company context used to generate a reply: who the user is,
@@ -16,6 +16,7 @@ namespace RespondMetier.Models
         private string description;
         private string ton;
         private string langue;
+        private string sessionId;
         private Signature signature;
 
         #endregion
@@ -95,6 +96,29 @@ namespace RespondMetier.Models
         }
 
         /// <summary>
+        /// Gets or sets the visitor this profile belongs to.
+        /// </summary>
+        /// <remarks>
+        /// Empty means a demonstration profile, visible to everyone and
+        /// modifiable by no one. Any other value is an anonymous visitor
+        /// identifier, so that two visitors never see each other's profiles
+        /// even though neither of them created an account.
+        /// </remarks>
+        public string SessionId
+        {
+            get { return sessionId; }
+            set { sessionId = value; }
+        }
+
+        /// <summary>
+        /// Gets whether this profile is a read-only demonstration profile
+        /// </summary>
+        public bool EstProfilDeDemonstration
+        {
+            get { return string.IsNullOrEmpty(sessionId); }
+        }
+
+        /// <summary>
         /// Gets or sets the signature block of this profile
         /// </summary>
         public Signature Signature
@@ -120,6 +144,7 @@ namespace RespondMetier.Models
             description = string.Empty;
             ton = string.Empty;
             langue = "français";
+            sessionId = string.Empty;
             signature = new Signature();
         }
 

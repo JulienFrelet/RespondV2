@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace RespondMetier.Models
 {
@@ -21,6 +21,7 @@ namespace RespondMetier.Models
         private string objet;
         private string destinataire;
         private string texte;
+        private string sessionId;
 
         #endregion
 
@@ -89,6 +90,20 @@ namespace RespondMetier.Models
             set { texte = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the visitor this entry belongs to.
+        /// </summary>
+        /// <remarks>
+        /// Every query is filtered on this value. Without it the history would
+        /// be shared by every visitor of the public demonstration, and anyone
+        /// could read the emails someone else pasted.
+        /// </remarks>
+        public string SessionId
+        {
+            get { return sessionId; }
+            set { sessionId = value; }
+        }
+
         #endregion
 
         #region Constructors
@@ -105,6 +120,7 @@ namespace RespondMetier.Models
             objet = string.Empty;
             destinataire = string.Empty;
             texte = string.Empty;
+            sessionId = string.Empty;
         }
 
         #endregion

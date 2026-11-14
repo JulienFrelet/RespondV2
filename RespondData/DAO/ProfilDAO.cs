@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RespondMetier.Data.Interfaces;
+using RespondMetier.Exceptions;
 using RespondMetier.Models;
 
 namespace RespondData.DAO
@@ -30,17 +31,25 @@ namespace RespondData.DAO
 
         #region Methods
 
-        public List<Profil> Lister()
+        public List<Profil> Lister(string sessionId)
         {
+            string session = Normaliser(sessionId);
+
+            // An empty SessionId marks a demonstration profile, visible to all.
             return this.context.Set<Profil>()
-                .OrderBy(profil => profil.Nom)
+                .Where(profil => profil.SessionId == string.Empty || profil.SessionId == session)
+                .OrderBy(profil => profil.SessionId)
+                .ThenBy(profil => profil.Nom)
                 .ToList();
         }
 
-        public Profil? ChargerParId(int id)
+        public Profil? ChargerParId(int id, string sessionId)
         {
+            string session = Normaliser(sessionId);
+
             return this.context.Set<Profil>()
-                .FirstOrDefault(profil => profil.Id == id);
+                .FirstOrDefault(profil => profil.Id == id
+                    && (profil.SessionId == string.Empty || profil.SessionId == session));
         }
 
         public void Inserer(Profil profil)
@@ -49,16 +58,9 @@ namespace RespondData.DAO
             this.context.SaveChanges();
         }
 
-        public void MettreAJour(Profil profil)
+        public void MettreAJour(Profil profil, string sessionId)
         {
-            Profil? existant = this.context.Set<Profil>()
-                .FirstOrDefault(element => element.Id == profil.Id);
-
-            if (existant == null)
-            {
-                throw new InvalidOperationException(
-                    "Impossible de modifier un profil qui n'existe pas.");
-            }
+            Profil existant = this.ChargerPourEcriture(profil.Id, sessionId);
 
             // The tracked instance is updated field by field rather than
             // replaced. Attaching the incoming object would make EF treat the
@@ -75,19 +77,53 @@ namespace RespondData.DAO
             this.context.SaveChanges();
         }
 
-        public void Supprimer(int id)
+        public void Supprimer(int id, string sessionId)
         {
-            Profil? existant = this.context.Set<Profil>()
-                .FirstOrDefault(profil => profil.Id == id);
+            Profil existant = this.ChargerPourEcriture(id, sessionId);
+
+            this.context.Set<Profil>().Remove(existant);
+            this.context.SaveChanges();
+        }
+
+        /// <summary>
+        /// Loads a profile the visitor is allowed to modify
+        /// </summary>
+        /// <param name="id">the identifier of the profile</param>
+        /// <param name="sessionId">the visitor's anonymous identifier</param>
+        /// <returns>the profile, tracked by the context</returns>
+        /// <exception cref="InvalidOperationException">the profile does not exist</exception>
+        /// <exception cref="ErreurProfilEnLectureSeule">the profile is a demonstration one</exception>
+        private Profil ChargerPourEcriture(int id, string sessionId)
+        {
+            Profil? existant = this.ChargerParId(id, sessionId);
 
             if (existant == null)
             {
                 throw new InvalidOperationException(
-                    "Impossible de supprimer un profil qui n'existe pas.");
+                    "Ce profil n'existe pas.");
             }
 
-            this.context.Set<Profil>().Remove(existant);
-            this.context.SaveChanges();
+            if (existant.EstProfilDeDemonstration)
+            {
+                throw new ErreurProfilEnLectureSeule(
+                    "Les profils de démonstration ne peuvent pas être modifiés. "
+                    + "Dupliquez-en un pour créer le vôtre.");
+            }
+
+            return existant;
+        }
+
+        /// <summary>
+        /// Guards against a null or blank session being taken for a demonstration one
+        /// </summary>
+        /// <param name="sessionId">the identifier received</param>
+        /// <returns>the identifier, or a value that matches nothing</returns>
+        private static string Normaliser(string sessionId)
+        {
+            // A blank identifier must never equal the empty SessionId of the
+            // demonstration profiles, or a caller that forgot to pass one
+            // would silently gain write access to them.
+            return string.IsNullOrWhiteSpace(sessionId) ? "\u0000-aucune-session" : sessionId;
         }
 
         #endregion
