@@ -97,6 +97,18 @@
 
 * { box-sizing: border-box; }
 
+/*
+  L'attribut hidden l'emporte sur toute regle de display.
+
+  Sans cette ligne, une regle aussi banale que .carte-detail { display: grid }
+  rend visible un element que le script a masque : hidden ne pose qu'un
+  display: none de feuille de style du navigateur, que n'importe quel
+  selecteur de classe surclasse. Le defaut est silencieux, il ne se voit qu'a
+  l'ecran, et il est reapparu trois fois dans ce projet avant d'etre traite
+  ici plutot que cas par cas.
+*/
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   padding: 0;
@@ -573,8 +585,46 @@ button {
 
 .carte-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+/*
+  Le detail replie d'une carte.
+
+  Les intitules sont a gauche et les valeurs a droite plutot qu'empiles :
+  sur une colonne etroite, une suite de paires intitule/valeur empilees se
+  lit comme un bloc de texte continu, ou l'oeil ne retrouve plus ce qu'il
+  cherche.
+*/
+.carte-detail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 0.84rem;
+}
+
+.carte-detail dt {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.carte-detail dd {
+  margin: 0;
+  color: var(--text-body);
+  /* La signature arrive avec ses retours a la ligne, qu'il faut conserver
+     pour la montrer telle qu'elle apparaitra dans la reponse. */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .carte-detail { grid-template-columns: 1fr; }
+  .carte-detail dd { margin-bottom: 6px; }
 }
 
 /* ── Formulaires ───────────────────────────────────────────────────────── */
@@ -727,9 +777,7 @@ button {
     overflow-y: auto;
   }
 
-  /* Les vues masquees le sont par l'attribut hidden, dont le display: none
-     serait annule par la regle ci-dessous : d'ou le :not([hidden]). */
-  .contenu > .vue:not([hidden]) {
+  .contenu > .vue {
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -748,12 +796,8 @@ button {
      devenir plus petit que son contenu, et le panneau deborde au lieu de
      defiler.
 
-     Le :not([hidden]) l'est tout autant : display: flex l'emporte sur le
-     display: none de l'attribut hidden. Sans lui, le panneau de detail de
-     l'historique restait visible alors qu'aucune reponse n'etait
-     selectionnee, et ses deux boutons Copier et Supprimer se retrouvaient
-     seuls sous une zone de texte vide. */
-  .panneau:not([hidden]) {
+     */
+  .panneau {
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -773,10 +817,8 @@ button {
   /* Le panneau de resultat suit la meme logique, sinon la zone de reponse
      garderait sa hauteur fixe au milieu d'un panneau etire.
 
-     Le :not([hidden]) n'est pas une precaution de style : display: flex
-     l'emporte sur le display: none que porte l'attribut hidden, et sans lui
-     le bloc de resultat occupait sa place alors qu'il etait masque. */
-  #resultat:not([hidden]) {
+     */
+  #resultat {
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -786,7 +828,7 @@ button {
   /* Le message d'attente se centre plutot que de rester colle en haut d'un
      panneau vide : c'est la meme place occupee, mais elle ne se lit plus
      comme un oubli. */
-  .attente:not([hidden]) {
+  .attente {
     display: flex;
     flex: 1;
     align-items: center;
@@ -795,7 +837,7 @@ button {
   }
 
   /* Les vues en liste gardent un defilement interne au panneau. */
-  .contenu > .vue:not([hidden]) > .panneau { overflow-y: auto; }
+  .contenu > .vue > .panneau { overflow-y: auto; }
 }
 
 /*

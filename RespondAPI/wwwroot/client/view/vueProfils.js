@@ -87,8 +87,25 @@ export class VueProfils {
     resume.textContent = profil.resume();
     carte.appendChild(resume);
 
+    const detail = this.#detail(profil);
     const actions = document.createElement('div');
     actions.className = 'carte-actions';
+
+    // Le detail se replie, parce qu'une liste de profils tous deplies
+    // redeviendrait illisible. Un bouton plutot qu'un clic sur la carte
+    // entiere : le clavier l'atteint, et rien ne se declenche par megarde en
+    // visant le bouton Supprimer juste a cote.
+    const bascule = this.#bouton(
+      'Voir le détail',
+      () => {
+        const ouvert = detail.hidden;
+        detail.hidden = !ouvert;
+        bascule.setAttribute('aria-expanded', String(ouvert));
+        bascule.textContent = ouvert ? 'Masquer le détail' : 'Voir le détail';
+      });
+
+    bascule.setAttribute('aria-expanded', 'false');
+    actions.appendChild(bascule);
 
     if (profil.estProfilDeDemonstration) {
       const note = document.createElement('span');
@@ -102,7 +119,63 @@ export class VueProfils {
     }
 
     carte.appendChild(actions);
+    carte.appendChild(detail);
     return carte;
+  }
+
+  /**
+   * Construit le bloc deplie d'une carte, qui montre tout le contenu du
+   * profil.
+   *
+   * Sans lui, le seul moyen de relire ce qu'on avait saisi etait d'ouvrir le
+   * formulaire de modification, donc de risquer un enregistrement non voulu ;
+   * et les profils de demonstration, en lecture seule, n'etaient consultables
+   * par aucun moyen.
+   * @param {object} profil le profil a detailler
+   * @returns {HTMLElement} le bloc, masque au depart
+   */
+  #detail(profil) {
+    const bloc = document.createElement('dl');
+    bloc.className = 'carte-detail';
+    bloc.hidden = true;
+
+    const signature = profil.signature ?? {};
+    const inclus = [
+      signature.inclureNom === false ? null : signature.nom,
+      signature.inclureService === false ? null : profil.service,
+      signature.inclureEntreprise === false ? null : profil.entreprise,
+      signature.inclureTelephone === false ? null : signature.telephone,
+      signature.inclureEmail === false ? null : signature.email,
+    ].filter((ligne) => typeof ligne === 'string' && ligne.length > 0);
+
+    const lignes = [
+      ['Service', profil.service],
+      ['Entreprise', profil.entreprise],
+      ['Domaines', profil.domaines],
+      ['Description', profil.description],
+      ['Ton', profil.ton],
+      ['Langue', profil.langue],
+      // La signature est montree telle qu'elle apparaitra dans la reponse,
+      // cases decochees comprises : c'est le resultat qui interesse, pas la
+      // liste des reglages qui y menent.
+      ['Signature', inclus.join('\n')],
+    ];
+
+    for (const [intitule, valeur] of lignes) {
+      if (!valeur) {
+        continue;
+      }
+
+      const terme = document.createElement('dt');
+      terme.textContent = intitule;
+      bloc.appendChild(terme);
+
+      const definition = document.createElement('dd');
+      definition.textContent = valeur;
+      bloc.appendChild(definition);
+    }
+
+    return bloc;
   }
 
   /**
