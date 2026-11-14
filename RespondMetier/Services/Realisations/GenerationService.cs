@@ -75,7 +75,13 @@ namespace RespondMetier.Services.Realisations
             DemandeGeneration demande, CleApi cleApi, ResultatGeneration resultat)
         {
             ReponseGeneree entree = new ReponseGeneree();
-            entree.Date = DateTime.Now;
+            // L'heure est enregistree en UTC, pas en heure locale. PostgreSQL
+            // refuse d'ecrire une date dont le fuseau n'est pas connu, et une
+            // heure locale n'aurait de toute facon pas de sens : le serveur
+            // et le visiteur ne sont pas dans le meme fuseau. La conversion
+            // vers l'heure du lecteur se fait a l'affichage, dans son
+            // navigateur, qui est le seul a savoir ou il se trouve.
+            entree.Date = DateTime.UtcNow;
             entree.NomProfil = demande.Profil.Nom;
             entree.SessionId = demande.SessionId;
 

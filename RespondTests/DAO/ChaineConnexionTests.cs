@@ -79,13 +79,32 @@ namespace RespondTests.DAO
             Assert.DoesNotContain("sslmode=", resultat);
         }
 
+        /// <summary>
+        /// Npgsql leve une exception sur un mot-cle inconnu, et les
+        /// hebergeurs ajoutent channel_binding, destine a l'autre client
+        /// PostgreSQL. Transmis tel quel, il empeche le demarrage.
+        /// </summary>
         [Fact]
-        public void Normaliser_ConserveLesAutresParametres()
+        public void Normaliser_EcarteLesParametresPropresALibpq()
         {
             string resultat = ChaineConnexion.Normaliser(
                 "postgresql://moi:secret@hote/respond?sslmode=require&channel_binding=require");
 
-            Assert.Contains("channel_binding=require", resultat);
+            Assert.DoesNotContain("channel_binding", resultat);
+            Assert.Contains("SSL Mode=require", resultat);
+        }
+
+        /// <summary>
+        /// Les parametres inconnus restent transmis : les ignorer en bloc
+        /// masquerait une faute de frappe dans une chaine de connexion.
+        /// </summary>
+        [Fact]
+        public void Normaliser_ConserveLesAutresParametres()
+        {
+            string resultat = ChaineConnexion.Normaliser(
+                "postgresql://moi:secret@hote/respond?Timeout=30");
+
+            Assert.Contains("Timeout=30", resultat);
         }
 
         [Fact]

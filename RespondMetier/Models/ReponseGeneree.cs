@@ -114,7 +114,7 @@ namespace RespondMetier.Models
         public ReponseGeneree()
         {
             id = 0;
-            date = DateTime.Now;
+            date = DateTime.UtcNow;
             nomProfil = string.Empty;
             nomCleApi = string.Empty;
             objet = string.Empty;

@@ -25,6 +25,25 @@ namespace RespondData
         /// </summary>
         private static readonly string[] SchemasPostgres = { "postgres://", "postgresql://" };
 
+        /// <summary>
+        /// The URL parameters that belong to libpq and that Npgsql rejects
+        /// </summary>
+        /// <remarks>
+        /// Npgsql leve une exception sur un mot-cle qu'il ne connait pas, et
+        /// les hebergeurs ajoutent des parametres destines a libpq, l'autre
+        /// client PostgreSQL.
+        ///
+        /// channel_binding en fait partie. L'ecarter n'affaiblit rien :
+        /// Npgsql n'a pas de reglage pour cela parce qu'il negocie lui-meme
+        /// la liaison de canal quand le serveur la propose. Seul le mot-cle
+        /// disparait, pas la protection.
+        ///
+        /// Les autres parametres restent transmis tels quels. Les ignorer en
+        /// bloc masquerait une faute de frappe dans une chaine de connexion,
+        /// alors qu'une erreur au demarrage la signale tout de suite.
+        /// </remarks>
+        private static readonly string[] ParametresIgnores = { "channel_binding" };
+
         #endregion
 
         #region Methods
@@ -146,8 +165,13 @@ namespace RespondData
                 string cle = DesEchapper(morceaux[0]);
                 string valeur = morceaux.Length > 1 ? DesEchapper(morceaux[1]) : string.Empty;
 
-                // sslmode est le seul parametre que les hebergeurs ajoutent et
-                // que Npgsql nomme autrement.
+                if (EstIgnore(cle))
+                {
+                    continue;
+                }
+
+                // sslmode designe le meme reglage dans les deux clients, sous
+                // un autre nom.
                 if (string.Equals(cle, "sslmode", StringComparison.OrdinalIgnoreCase))
                 {
                     resultat.Append(";SSL Mode=").Append(valeur);
@@ -157,6 +181,24 @@ namespace RespondData
                     resultat.Append(';').Append(cle).Append('=').Append(valeur);
                 }
             }
+        }
+
+        /// <summary>
+        /// Tells whether a URL parameter must be left out of the result
+        /// </summary>
+        /// <param name="cle">the parameter name read from the URL</param>
+        /// <returns>true when Npgsql would reject it</returns>
+        private static bool EstIgnore(string cle)
+        {
+            foreach (string ignore in ParametresIgnores)
+            {
+                if (string.Equals(cle, ignore, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
