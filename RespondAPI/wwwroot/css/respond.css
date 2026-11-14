@@ -29,6 +29,7 @@
   --text-muted:    #6B7280;
   --text-light:    #9CA3AF;
 
+  --champ-fond:    #FFFFFF;
   --border:        #E5E7EB;
   --border-focus:  #0D9488;
 
@@ -47,8 +48,20 @@
   --transition:    all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/*
+  Mode sombre.
+
+  Deux declarations identiques, et c'est voulu :
+  - la requete media suit la preference du systeme, mais elle est neutralisee
+    des que l'utilisateur a explicitement choisi le mode clair ;
+  - l'attribut data-theme="dark" applique le mode sombre quel que soit le
+    systeme, quand l'utilisateur l'a choisi.
+
+  Sans la garde :not([data-theme="light"]), quelqu'un dont le systeme est en
+  sombre ne pourrait jamais passer sa page en clair.
+*/
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg:            #0F172A;
     --surface:       #1E293B;
     --navy:          #060B16;
@@ -56,11 +69,27 @@
     --text-body:     #E2E8F0;
     --text-muted:    #94A3B8;
     --text-light:    #64748B;
+    --champ-fond:    #0F172A;
     --border:        #334155;
     --primary-pale:  #0D2D28;
     --primary-light: #134E4A;
     --danger-light:  #2D1515;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg:            #0F172A;
+  --surface:       #1E293B;
+  --navy:          #060B16;
+  --text:          #A7F3D0;
+  --text-body:     #E2E8F0;
+  --text-muted:    #94A3B8;
+  --text-light:    #64748B;
+  --champ-fond:    #0F172A;
+  --border:        #334155;
+  --primary-pale:  #0D2D28;
+  --primary-light: #134E4A;
+  --danger-light:  #2D1515;
 }
 
 * { box-sizing: border-box; }
@@ -165,15 +194,11 @@ select, textarea, input[type="text"] {
   padding: 10px 13px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--champ-fond);
   color: var(--text-body);
   font: inherit;
   resize: vertical;
   transition: var(--transition);
-}
-
-@media (prefers-color-scheme: dark) {
-  select, textarea, input[type="text"] { background: #0F172A; }
 }
 
 select:focus, textarea:focus, input[type="text"]:focus {
@@ -298,4 +323,37 @@ button {
   padding: 10px 14px;
   border-radius: var(--radius-sm);
   background: var(--danger-light);
+}
+
+/* ── Bascule de theme ──────────────────────────────────────────────────── */
+
+.bouton-theme {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.bouton-theme:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Une seule icone visible a la fois : celle de la destination du clic. */
+.bouton-theme .icone-soleil { display: none; }
+.bouton-theme .icone-lune { display: block; }
+
+:root[data-theme="dark"] .bouton-theme .icone-soleil { display: block; }
+:root[data-theme="dark"] .bouton-theme .icone-lune { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bouton-theme .icone-soleil { display: block; }
+  :root:not([data-theme="light"]) .bouton-theme .icone-lune { display: none; }
 }
