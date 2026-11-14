@@ -12,7 +12,7 @@ namespace RespondMetier.Services.Realisations
         #region Properties
 
         private readonly IConstructeurPrompt constructeur;
-        private readonly IFournisseurIA fournisseur;
+        private readonly IFabriqueFournisseurIA fabrique;
         private readonly IAnalyseurReponse analyseur;
         private readonly IHistoriqueDAO historique;
         private readonly int limiteHistorique;
@@ -25,19 +25,19 @@ namespace RespondMetier.Services.Realisations
         /// Initializes a new instance of the GenerationService class
         /// </summary>
         /// <param name="constructeur">builds the prompt from the request</param>
-        /// <param name="fournisseur">sends the prompt to an AI provider</param>
+        /// <param name="fabrique">builds the client for the chosen provider</param>
         /// <param name="analyseur">splits the answer into subject and body</param>
         /// <param name="historique">stores the generated replies</param>
         /// <param name="limiteHistorique">how many entries the history keeps</param>
         public GenerationService(
             IConstructeurPrompt constructeur,
-            IFournisseurIA fournisseur,
+            IFabriqueFournisseurIA fabrique,
             IAnalyseurReponse analyseur,
             IHistoriqueDAO historique,
             int limiteHistorique)
         {
             this.constructeur = constructeur;
-            this.fournisseur = fournisseur;
+            this.fabrique = fabrique;
             this.analyseur = analyseur;
             this.historique = historique;
             this.limiteHistorique = limiteHistorique;
@@ -48,17 +48,19 @@ namespace RespondMetier.Services.Realisations
         #region Methods
 
         public async Task<ResultatGeneration> GenererAsync(
-            DemandeGeneration demande, string nomCleApi, CancellationToken jeton)
+            DemandeGeneration demande, CleApi cleApi, CancellationToken jeton)
         {
             // Building the prompt validates the request, so an unusable request
             // fails here rather than after a round trip to the provider.
             PromptGeneration prompt = this.constructeur.Construire(demande);
 
-            string texte = await this.fournisseur.GenererAsync(prompt, jeton);
+            IFournisseurIA fournisseur = this.fabrique.Creer(cleApi.Fournisseur, cleApi.Secret);
+
+            string texte = await fournisseur.GenererAsync(prompt, jeton);
 
             ResultatGeneration resultat = this.analyseur.Separer(texte);
 
-            this.Enregistrer(demande, nomCleApi, resultat);
+            this.Enregistrer(demande, cleApi, resultat);
 
             return resultat;
         }
@@ -67,15 +69,19 @@ namespace RespondMetier.Services.Realisations
         /// Stores the reply, then trims the history to its configured size
         /// </summary>
         /// <param name="demande">the request that produced the reply</param>
-        /// <param name="nomCleApi">the label of the credential used</param>
+        /// <param name="cleApi">the credential used, stored by label only</param>
         /// <param name="resultat">the reply to store</param>
         private void Enregistrer(
-            DemandeGeneration demande, string nomCleApi, ResultatGeneration resultat)
+            DemandeGeneration demande, CleApi cleApi, ResultatGeneration resultat)
         {
             ReponseGeneree entree = new ReponseGeneree();
             entree.Date = DateTime.Now;
             entree.NomProfil = demande.Profil.Nom;
-            entree.NomCleApi = nomCleApi;
+
+            // The label, never the secret: a history row must stay safe to
+            // read, to export and to display.
+            entree.NomCleApi = cleApi.Libelle;
+
             entree.Objet = resultat.Objet;
             entree.Texte = resultat.Corps;
 

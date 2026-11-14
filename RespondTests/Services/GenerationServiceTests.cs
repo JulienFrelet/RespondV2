@@ -13,6 +13,7 @@ namespace RespondTests.Services
     public class GenerationServiceTests
     {
         private const int LimiteHistorique = 20;
+        private const string SecretFactice = "gsk_secret_de_test";
 
         /// <summary>
         /// Builds a usable request
@@ -28,14 +29,26 @@ namespace RespondTests.Services
         }
 
         /// <summary>
+        /// Builds the credential handed to the service
+        /// </summary>
+        private static CleApi ConstruireCle()
+        {
+            CleApi cle = new CleApi();
+            cle.Libelle = "Groq demo";
+            cle.Fournisseur = Fournisseur.Groq;
+            cle.Secret = SecretFactice;
+            return cle;
+        }
+
+        /// <summary>
         /// Wires the service with the given provider and history
         /// </summary>
         private static GenerationService Construire(
-            FauxFournisseurIA fournisseur, FauxHistoriqueDAO historique)
+            FauxFabriqueFournisseurIA fabrique, FauxHistoriqueDAO historique)
         {
             return new GenerationService(
                 new ConstructeurPrompt(),
-                fournisseur,
+                fabrique,
                 new AnalyseurReponse(),
                 historique,
                 LimiteHistorique);
@@ -49,12 +62,12 @@ namespace RespondTests.Services
         [Fact]
         public async Task GenerationRenvoieObjetEtCorps()
         {
-            FauxFournisseurIA fournisseur = new FauxFournisseurIA(
-                "OBJET: Re: commande\n\nBonjour,\n\nVotre colis part demain.");
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(
+                new FauxFournisseurIA("OBJET: Re: commande\n\nBonjour,\n\nVotre colis part demain."));
             FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
 
-            ResultatGeneration resultat = await Construire(fournisseur, historique)
-                .GenererAsync(ConstruireDemande(), "Groq demo", CancellationToken.None);
+            ResultatGeneration resultat = await Construire(fabrique, historique)
+                .GenererAsync(ConstruireDemande(), ConstruireCle(), CancellationToken.None);
 
             Assert.Equal("Re: commande", resultat.Objet);
             Assert.Contains("Votre colis part demain.", resultat.Corps);
@@ -68,15 +81,33 @@ namespace RespondTests.Services
         public async Task PromptTransmisAvecSeparationConservee()
         {
             FauxFournisseurIA fournisseur = new FauxFournisseurIA("OBJET: Re\n\nBonjour,");
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(fournisseur);
             FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
 
-            await Construire(fournisseur, historique).GenererAsync(
-                ConstruireDemande("Mon four est casse."), "Groq demo", CancellationToken.None);
+            await Construire(fabrique, historique).GenererAsync(
+                ConstruireDemande("Mon four est casse."), ConstruireCle(), CancellationToken.None);
 
             Assert.NotNull(fournisseur.PromptRecu);
             Assert.Equal("Mon four est casse.", fournisseur.PromptRecu.DonneesAAnalyser);
             Assert.Contains("Service client", fournisseur.PromptRecu.Instructions);
             Assert.DoesNotContain("Mon four est casse.", fournisseur.PromptRecu.Instructions);
+        }
+
+        /// <summary>
+        /// The credential is passed on to the factory as given
+        /// </summary>
+        [Fact]
+        public async Task CleTransmiseALaFabrique()
+        {
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(
+                new FauxFournisseurIA("OBJET: Re\n\nBonjour,"));
+            FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
+
+            await Construire(fabrique, historique).GenererAsync(
+                ConstruireDemande(), ConstruireCle(), CancellationToken.None);
+
+            Assert.Equal(Fournisseur.Groq, fabrique.FournisseurDemande);
+            Assert.Equal(SecretFactice, fabrique.CleDemandee);
         }
 
         #endregion
@@ -89,12 +120,12 @@ namespace RespondTests.Services
         [Fact]
         public async Task ReponseEnregistreeDansHistorique()
         {
-            FauxFournisseurIA fournisseur = new FauxFournisseurIA(
-                "OBJET: Re: commande\n\nBonjour,");
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(
+                new FauxFournisseurIA("OBJET: Re: commande\n\nBonjour,"));
             FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
 
-            await Construire(fournisseur, historique).GenererAsync(
-                ConstruireDemande(), "Groq demo", CancellationToken.None);
+            await Construire(fabrique, historique).GenererAsync(
+                ConstruireDemande(), ConstruireCle(), CancellationToken.None);
 
             ReponseGeneree entree = Assert.Single(historique.Entrees);
             Assert.Equal("SAV", entree.NomProfil);
@@ -104,17 +135,38 @@ namespace RespondTests.Services
         }
 
         /// <summary>
+        /// The secret never reaches the history: only the label is stored.
+        /// A history row must stay safe to read, export and display.
+        /// </summary>
+        [Fact]
+        public async Task SecretJamaisEnregistreDansHistorique()
+        {
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(
+                new FauxFournisseurIA("OBJET: Re\n\nBonjour,"));
+            FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
+
+            await Construire(fabrique, historique).GenererAsync(
+                ConstruireDemande(), ConstruireCle(), CancellationToken.None);
+
+            ReponseGeneree entree = Assert.Single(historique.Entrees);
+            Assert.DoesNotContain(SecretFactice, entree.NomCleApi);
+            Assert.DoesNotContain(SecretFactice, entree.Texte);
+            Assert.DoesNotContain(SecretFactice, entree.Objet);
+        }
+
+        /// <summary>
         /// The history is trimmed after every insertion, so it cannot grow
         /// without bound between two manual cleanups
         /// </summary>
         [Fact]
         public async Task HistoriqueLimiteApresChaqueEnregistrement()
         {
-            FauxFournisseurIA fournisseur = new FauxFournisseurIA("OBJET: Re\n\nBonjour,");
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(
+                new FauxFournisseurIA("OBJET: Re\n\nBonjour,"));
             FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
 
-            await Construire(fournisseur, historique).GenererAsync(
-                ConstruireDemande(), "Groq demo", CancellationToken.None);
+            await Construire(fabrique, historique).GenererAsync(
+                ConstruireDemande(), ConstruireCle(), CancellationToken.None);
 
             Assert.Equal(LimiteHistorique, historique.DerniereLimiteAppliquee);
         }
@@ -131,13 +183,15 @@ namespace RespondTests.Services
         public async Task DemandeInvalideEchoueSansAppelerLeFournisseur()
         {
             FauxFournisseurIA fournisseur = new FauxFournisseurIA("jamais utilise");
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(fournisseur);
             FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
 
             await Assert.ThrowsAsync<ErreurDemandeInvalide>(
-                () => Construire(fournisseur, historique).GenererAsync(
-                    ConstruireDemande(""), "Groq demo", CancellationToken.None));
+                () => Construire(fabrique, historique).GenererAsync(
+                    ConstruireDemande(""), ConstruireCle(), CancellationToken.None));
 
             Assert.Equal(0, fournisseur.NombreAppels);
+            Assert.Null(fabrique.FournisseurDemande);
             Assert.Empty(historique.Entrees);
         }
 
@@ -148,13 +202,13 @@ namespace RespondTests.Services
         [Fact]
         public async Task EchecFournisseurRemonteTelQuel()
         {
-            FauxFournisseurIA fournisseur = new FauxFournisseurIA(
-                new ErreurQuotaDepasse("Quota atteint."));
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(
+                new FauxFournisseurIA(new ErreurQuotaDepasse("Quota atteint.")));
             FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
 
             await Assert.ThrowsAsync<ErreurQuotaDepasse>(
-                () => Construire(fournisseur, historique).GenererAsync(
-                    ConstruireDemande(), "Groq demo", CancellationToken.None));
+                () => Construire(fabrique, historique).GenererAsync(
+                    ConstruireDemande(), ConstruireCle(), CancellationToken.None));
         }
 
         /// <summary>
@@ -164,13 +218,13 @@ namespace RespondTests.Services
         [Fact]
         public async Task EchecNEnregistreRien()
         {
-            FauxFournisseurIA fournisseur = new FauxFournisseurIA(
-                new ErreurFournisseurIndisponible("Injoignable."));
+            FauxFabriqueFournisseurIA fabrique = new FauxFabriqueFournisseurIA(
+                new FauxFournisseurIA(new ErreurFournisseurIndisponible("Injoignable.")));
             FauxHistoriqueDAO historique = new FauxHistoriqueDAO();
 
             await Assert.ThrowsAsync<ErreurFournisseurIndisponible>(
-                () => Construire(fournisseur, historique).GenererAsync(
-                    ConstruireDemande(), "Groq demo", CancellationToken.None));
+                () => Construire(fabrique, historique).GenererAsync(
+                    ConstruireDemande(), ConstruireCle(), CancellationToken.None));
 
             Assert.Empty(historique.Entrees);
             Assert.Equal(-1, historique.DerniereLimiteAppliquee);

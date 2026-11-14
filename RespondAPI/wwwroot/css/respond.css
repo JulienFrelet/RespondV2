@@ -1,0 +1,207 @@
+/*
+  Styles de Respond.
+
+  Polices systeme uniquement : aucun appel a un service de polices distant,
+  donc aucune fuite de l'adresse IP du visiteur vers un tiers, et la page
+  s'affiche aussi vite hors connexion.
+*/
+
+:root {
+  --fond: #f6f7f9;
+  --surface: #ffffff;
+  --bordure: #d8dce3;
+  --texte: #1b1f27;
+  --texte-doux: #5c6472;
+  --accent: #2f5bd7;
+  --accent-sombre: #24479f;
+  --erreur: #c0372b;
+  --succes: #1f7a4d;
+  --rayon: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #14171c;
+    --surface: #1d2127;
+    --bordure: #333a45;
+    --texte: #e8eaee;
+    --texte-doux: #9aa3b2;
+    --accent: #6f93f5;
+    --accent-sombre: #8aa8f8;
+    --erreur: #f08a7f;
+    --succes: #5fc98f;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 16px 48px;
+  background: var(--fond);
+  color: var(--texte);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.entete {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 0 20px;
+}
+
+.entete h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+
+.accroche {
+  margin: 4px 0 14px;
+  color: var(--texte-doux);
+}
+
+.bandeau-demo {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--bordure);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  color: var(--texte-doux);
+  font-size: 0.88rem;
+}
+
+.colonnes {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 860px) {
+  .colonnes { grid-template-columns: 1fr; }
+}
+
+.panneau {
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  padding: 20px;
+}
+
+.panneau h2 {
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texte-doux);
+}
+
+label {
+  display: block;
+  margin: 14px 0 5px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+select, textarea, input[type="text"] {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  background: var(--fond);
+  color: var(--texte);
+  font: inherit;
+  resize: vertical;
+}
+
+select:focus, textarea:focus, input[type="text"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+input[readonly] { color: var(--texte-doux); }
+
+.indice {
+  margin: 5px 0 0;
+  color: var(--texte-doux);
+  font-size: 0.82rem;
+}
+
+.longueurs {
+  margin: 18px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+}
+
+.longueurs legend {
+  padding: 0 6px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.longueurs label {
+  display: inline-block;
+  margin: 0 18px 0 0;
+  font-weight: 400;
+}
+
+button {
+  font: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.bouton-principal {
+  width: 100%;
+  margin-top: 18px;
+  padding: 11px 16px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.bouton-principal:hover:not(:disabled) { background: var(--accent-sombre); }
+
+.bouton-principal:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.bouton-secondaire {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1px solid var(--bordure);
+  background: var(--fond);
+  color: var(--texte);
+}
+
+.bouton-secondaire:hover { border-color: var(--accent); }
+
+.bouton-secondaire.confirme {
+  border-color: var(--succes);
+  color: var(--succes);
+}
+
+.attente {
+  margin: 0;
+  padding: 28px 0;
+  color: var(--texte-doux);
+  text-align: center;
+}
+
+.erreur {
+  margin: 12px 0 0;
+  color: var(--erreur);
+  font-size: 0.88rem;
+  min-height: 1.2em;
+}

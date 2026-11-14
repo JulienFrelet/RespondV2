@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!--
+    La politique de securite du contenu est envoyee en en-tete HTTP par le
+    serveur, pas ici : la directive frame-ancestors est ignoree lorsqu'elle
+    est delivree par une balise meta. Voir EnTetesSecurite dans Program.cs.
+  -->
+  <title>Respond — generateur de reponses email</title>
+  <link rel="stylesheet" href="css/respond.css" />
+</head>
+<body>
+
+<header class="entete">
+  <h1>Respond</h1>
+  <p class="accroche">Generateur de reponses a des emails professionnels.</p>
+  <p class="bandeau-demo" id="bandeau-demo">
+    Mode demonstration. La cle API est fournie par le serveur, le quota est limite par heure.
+  </p>
+</header>
+
+<main class="colonnes">
+
+  <section class="panneau">
+    <h2>La demande</h2>
+
+    <label for="sel-profil">Profil d'entreprise</label>
+    <select id="sel-profil"></select>
+    <p class="indice" id="indice-profil"></p>
+
+    <label for="txt-email">Message recu</label>
+    <textarea id="txt-email" rows="10"
+              placeholder="Collez ici l'email auquel vous souhaitez repondre."></textarea>
+    <p class="indice"><span id="compteur-email">0</span> caracteres</p>
+
+    <label for="txt-contexte">Contexte (optionnel)</label>
+    <textarea id="txt-contexte" rows="3"
+              placeholder="Numero de suivi, delai, information utile pour cette reponse."></textarea>
+
+    <fieldset class="longueurs">
+      <legend>Longueur</legend>
+      <label><input type="radio" name="longueur" value="Courte" checked /> Courte</label>
+      <label><input type="radio" name="longueur" value="Complete" /> Complete</label>
+    </fieldset>
+
+    <button id="btn-generer" class="bouton-principal">Generer la reponse</button>
+    <p class="erreur" id="err-demande"></p>
+  </section>
+
+  <section class="panneau">
+    <h2>La reponse</h2>
+
+    <p class="attente" id="attente">Rien pour l'instant. Remplissez le formulaire et cliquez sur Generer.</p>
+
+    <div id="resultat" hidden>
+      <label for="txt-objet">Objet</label>
+      <input id="txt-objet" type="text" readonly />
+
+      <label for="txt-corps">Corps</label>
+      <textarea id="txt-corps" rows="16"></textarea>
+
+      <div class="actions">
+        <button id="btn-copier" class="bouton-secondaire">Copier</button>
+        <button id="btn-regenerer" class="bouton-secondaire">Regenerer</button>
+      </div>
+      <p class="indice">
+        Relisez toujours la reponse avant de l'envoyer. Rien n'est expedie automatiquement.
+      </p>
+    </div>
+
+    <p class="erreur" id="err-resultat"></p>
+  </section>
+
+</main>
+
+<script type="module" src="client/app.js"></script>
+</body>
+</html>
