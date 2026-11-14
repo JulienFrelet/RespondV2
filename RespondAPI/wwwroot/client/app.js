@@ -1,10 +1,13 @@
 import { ServiceReponses } from './service/serviceReponses.js';
 import { VueGenerer } from './view/vueGenerer.js';
+import { VueTheme } from './view/vueTheme.js';
 
 /**
- * Point d'entree du client. Assemble le service et la vue, rien de plus :
- * la logique vit dans la vue, les appels reseau dans le service.
+ * Point d'entree du client. Assemble les services et les vues, rien de plus :
+ * la logique vit dans les vues, les appels reseau dans le service.
  */
+new VueTheme().demarrer();
+
 const vue = new VueGenerer(new ServiceReponses());
 
 vue.demarrer().catch((erreur) => {
