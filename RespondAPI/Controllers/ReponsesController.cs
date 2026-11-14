@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.RateLimiting;
 using RespondAPI.Dtos;
 using RespondAPI.Services;
@@ -51,6 +52,22 @@ namespace RespondAPI.Controllers
 
         #endregion
 
+        #region Constants
+
+        /// <summary>
+        /// Header carrying a key the visitor supplies for their own request.
+        /// </summary>
+        /// <remarks>
+        /// A header rather than the body, for two reasons. The rate limiter
+        /// runs before the body is read, so it could not otherwise tell a
+        /// visitor using their own quota from one using the shared demo key.
+        /// And a header never lands in a URL, so the key cannot leak into an
+        /// access log or a browser history.
+        /// </remarks>
+        public const string EnTeteCle = "X-Cle-Api";
+
+        #endregion
+
         #region Methods
 
         /// <summary>
@@ -73,7 +90,7 @@ namespace RespondAPI.Controllers
                 return this.NotFound(new { erreur = "Ce profil n'existe pas." });
             }
 
-            CleApi? cle = this.LireCleDemo();
+            CleApi? cle = this.LireCleUtilisateur() ?? this.LireCleDemo();
 
             if (cle == null)
             {
@@ -125,6 +142,36 @@ namespace RespondAPI.Controllers
                 return this.StatusCode(
                     StatusCodes.Status502BadGateway, new { erreur = erreur.Message });
             }
+        }
+
+        /// <summary>
+        /// Builds a credential from the key the visitor supplied, if any
+        /// </summary>
+        /// <remarks>
+        /// The key is used for this single request and never written anywhere:
+        /// not to the database, not to a log, not to the history, which only
+        /// ever stores a label.
+        /// </remarks>
+        /// <returns>the visitor's credential, or null when none was supplied</returns>
+        private CleApi? LireCleUtilisateur()
+        {
+            if (!this.Request.Headers.TryGetValue(EnTeteCle, out StringValues valeurs))
+            {
+                return null;
+            }
+
+            string secret = valeurs.ToString().Trim();
+
+            if (secret.Length == 0)
+            {
+                return null;
+            }
+
+            CleApi cle = new CleApi();
+            cle.Libelle = "Ma clé";
+            cle.Fournisseur = Fournisseur.Groq;
+            cle.Secret = secret;
+            return cle;
         }
 
         /// <summary>

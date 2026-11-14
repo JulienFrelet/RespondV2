@@ -2,7 +2,9 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 using RespondAPI.Clients;
+using RespondAPI.Controllers;
 using RespondAPI.Services;
 using RespondData;
 using RespondData.DAO;
@@ -80,14 +82,30 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     options.AddPolicy(NomPolitiqueDebit.Generation, contexte =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: contexte.Connection.RemoteIpAddress?.ToString() ?? "inconnu",
+    {
+        string adresse = contexte.Connection.RemoteIpAddress?.ToString() ?? "inconnu";
+
+        // Un visiteur qui apporte sa propre cle paie son propre quota chez le
+        // fournisseur : la limite stricte de la demonstration n'a plus lieu
+        // d'etre. Elle reste large plutot qu'absente, pour que le serveur ne
+        // devienne pas un relais ouvert.
+        bool cleFournie = contexte.Request.Headers
+            .TryGetValue(ReponsesController.EnTeteCle, out StringValues cle)
+            && !string.IsNullOrWhiteSpace(cle.ToString());
+
+        int limite = cleFournie
+            ? builder.Configuration.GetValue<int>("Respond:ClePersonnelle:GenerationsParHeure")
+            : builder.Configuration.GetValue<int>("Respond:Demo:GenerationsParHeure");
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: (cleFournie ? "cle:" : "demo:") + adresse,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = builder.Configuration.GetValue<int>("Respond:Demo:GenerationsParHeure"),
+                PermitLimit = limite,
                 Window = TimeSpan.FromHours(1),
                 QueueLimit = 0,
-            }));
+            });
+    });
 });
 
 var app = builder.Build();
