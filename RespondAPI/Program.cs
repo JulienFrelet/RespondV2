@@ -2,6 +2,7 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
 using RespondAPI.Clients;
@@ -39,8 +40,24 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 // Configure the database.
+string chaineConnexion = builder.Configuration.GetConnectionString("Default")
+    ?? "Data Source=respond.db";
+
+// SQLite ouvre un fichier, il ne cree pas le dossier qui le contient. En
+// production la base vit sur un volume persistant, et si ce dossier n'existe
+// pas encore le demarrage echoue sur une erreur qui ne dit pas laquelle des
+// deux causes est en jeu : chemin absent ou droits insuffisants. On cree donc
+// le dossier ici, ou l'echec est explicite.
+string fichierBase = new SqliteConnectionStringBuilder(chaineConnexion).DataSource;
+string dossierBase = Path.GetDirectoryName(Path.GetFullPath(fichierBase)) ?? string.Empty;
+
+if (dossierBase.Length > 0)
+{
+    Directory.CreateDirectory(dossierBase);
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
+    options.UseSqlite(chaineConnexion));
 
 builder.Services.AddScoped<InitialiseurBaseDeDonnees>();
 
