@@ -48,6 +48,14 @@ namespace RespondData
             get { return Set<DataProtectionKey>(); }
         }
 
+        /// <summary>
+        /// Represents the write counters table
+        /// </summary>
+        public DbSet<CompteurEcritures> CompteursEcritures
+        {
+            get { return Set<CompteurEcritures>(); }
+        }
+
         #endregion
 
         #region Constructors
@@ -118,6 +126,22 @@ namespace RespondData
                 // Chaque lecture filtre sur la session puis trie par date :
                 // l'index composite couvre les deux d'un coup.
                 entity.HasIndex(reponse => new { reponse.SessionId, reponse.Date });
+            });
+
+            // Compteurs d'ecritures, un par adresse cliente.
+            modelBuilder.Entity<CompteurEcritures>(entity =>
+            {
+                entity.ToTable("CompteurEcritures");
+                entity.HasKey(compteur => compteur.Id);
+                entity.Property(compteur => compteur.Id).ValueGeneratedOnAdd();
+                entity.Property(compteur => compteur.Cle).IsRequired();
+                entity.Property(compteur => compteur.DebutFenetre).IsRequired();
+
+                // Chaque ecriture commence par chercher la ligne de l'adresse :
+                // sans index unique, la lecture balaierait la table et deux
+                // requetes simultanees pourraient creer deux lignes pour la
+                // meme adresse, donc deux compteurs a contourner.
+                entity.HasIndex(compteur => compteur.Cle).IsUnique();
             });
         }
 

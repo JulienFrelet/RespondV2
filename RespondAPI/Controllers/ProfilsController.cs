@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
+using RespondAPI.Filtres;
 using RespondAPI.Dtos;
 using RespondAPI.Services;
 using RespondMetier.Data.Interfaces;
@@ -85,7 +85,7 @@ namespace RespondAPI.Controllers
         /// <param name="profilDto">the profile to create</param>
         /// <returns>the created profile, with its identifier</returns>
         [HttpPost]
-        [EnableRateLimiting(NomPolitiqueDebit.Ecriture)]
+        [LimiteEcriture]
         public ActionResult<ProfilVueDto> Creer([FromBody] ProfilDto profilDto)
         {
             string sessionId = this.SessionCourante();
@@ -124,7 +124,7 @@ namespace RespondAPI.Controllers
         /// <param name="profilDto">the new values</param>
         /// <returns>the updated profile</returns>
         [HttpPut("{id:int}")]
-        [EnableRateLimiting(NomPolitiqueDebit.Ecriture)]
+        [LimiteEcriture]
         public ActionResult<ProfilVueDto> Modifier(int id, [FromBody] ProfilDto profilDto)
         {
             string sessionId = this.SessionCourante();

@@ -84,7 +84,11 @@ Chaque point ci-dessous est une décision, pas un réglage par défaut.
   écritures en base, et plafond sur la taille des messages. Le nombre de
   profils est aussi plafonné par visiteur — mais un visiteur n'est qu'un
   cookie, qu'il suffit de ne pas renvoyer pour repartir à zéro : c'est
-  l'adresse, que le visiteur ne choisit pas, qui borne réellement.
+  l'adresse, que le visiteur ne choisit pas, qui borne réellement. Le
+  compteur des écritures vit **en base** et non en mémoire : l'hébergement
+  gratuit redémarre le service dès qu'il a dormi quelques minutes, et des
+  compteurs en mémoire repartaient alors de zéro. Le défaut ne se voyait pas
+  en développement, où le processus ne s'arrête jamais.
 - **En-têtes** : politique de sécurité du contenu stricte envoyée en en-tête
   HTTP et non en balise `meta`, `nosniff`, `Referrer-Policy`, HSTS en
   production, en-tête `Server` supprimé.

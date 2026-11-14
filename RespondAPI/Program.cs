@@ -128,6 +128,21 @@ builder.Services.AddSingleton<ISessionVisiteur, SessionVisiteur>();
 // Register DAOs.
 builder.Services.AddScoped<IProfilDAO, ProfilDAO>();
 builder.Services.AddScoped<IHistoriqueDAO, HistoriqueDAO>();
+builder.Services.AddScoped<ICompteurEcrituresDAO, CompteurEcrituresDAO>();
+
+// Limitation des ecritures en base, comptee en base elle aussi.
+//
+// La limitation fournie par le serveur garde ses compteurs dans le processus.
+// L'hebergement gratuit endort le service apres quelques minutes sans visite,
+// et chaque reveil redemarre le processus : les compteurs repartaient alors a
+// zero, et il suffisait d'attendre pour ecrire de nouveau sans limite. Le
+// defaut ne se voyait pas en developpement, ou le processus ne s'arrete
+// jamais.
+builder.Services.AddScoped<ILimiteurEcritures>(fournisseurs =>
+    new LimiteurEcritures(
+        fournisseurs.GetRequiredService<ICompteurEcrituresDAO>(),
+        builder.Configuration.GetValue<int>("Respond:EcrituresParHeure"),
+        TimeSpan.FromHours(1)));
 
 // Register business services. The prompt builder and the answer parser hold
 // no state, so a single instance serves every request.
@@ -178,31 +193,6 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = limite,
-                Window = TimeSpan.FromHours(1),
-                QueueLimit = 0,
-            });
-    });
-
-    // Ecritures en base : creation et modification de profils.
-    //
-    // Le nombre de profils est deja plafonne par visiteur, mais un visiteur
-    // n'est qu'un cookie : il suffit de ne pas le renvoyer pour repartir a
-    // zero autant de fois qu'on veut. Le plafond par session ne borne donc
-    // rien du tout face a un script, et la base, sur une offre gratuite
-    // limitee en taille, se remplirait jusqu'a refuser d'ecrire.
-    //
-    // La limite porte sur l'adresse, que le visiteur ne choisit pas. Elle est
-    // large : un usage normal cree quelques profils, jamais soixante par
-    // heure.
-    options.AddPolicy(NomPolitiqueDebit.Ecriture, contexte =>
-    {
-        string adresse = contexte.Connection.RemoteIpAddress?.ToString() ?? "inconnu";
-
-        return RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: "ecriture:" + adresse,
-            factory: _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = builder.Configuration.GetValue<int>("Respond:EcrituresParHeure"),
                 Window = TimeSpan.FromHours(1),
                 QueueLimit = 0,
             });
@@ -279,6 +269,4 @@ public static class NomPolitiqueDebit
     /// <summary>Policy applied to the generation endpoint</summary>
     public const string Generation = "generation";
 
-    /// <summary>Policy applied to the endpoints that write to the database</summary>
-    public const string Ecriture = "ecriture";
 }
