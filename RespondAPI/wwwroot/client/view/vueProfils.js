@@ -170,7 +170,25 @@ export class VueProfils {
    * @param {string} valeur la valeur a ecrire
    */
   #valeur(id, valeur) {
-    document.getElementById(id).value = valeur;
+    const champ = document.getElementById(id);
+
+    // Donner a un <select> une valeur absente de ses options le laisse vide,
+    // sans erreur. Le ton d'un profil se vidait ainsi a l'ouverture du
+    // formulaire, et un enregistrement l'aurait efface sans que personne ne
+    // l'ait demande. La valeur reelle est donc ajoutee a la liste quand elle
+    // n'y figure pas : mieux vaut une option inattendue qu'une donnee perdue.
+    if (champ.tagName === 'SELECT' && valeur !== '') {
+      const connue = [...champ.options].some((option) => option.value === valeur);
+
+      if (!connue) {
+        const option = document.createElement('option');
+        option.value = valeur;
+        option.textContent = valeur;
+        champ.appendChild(option);
+      }
+    }
+
+    champ.value = valeur;
   }
 
   /**
