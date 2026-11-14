@@ -79,6 +79,41 @@ Pour activer le mode démonstration, enregistrez une clé
 dotnet user-secrets set "Respond:CleDemo" "votre_cle" --project RespondAPI
 ```
 
+## Déploiement
+
+L'application se construit en image Docker et attend deux volumes persistants.
+
+| Variable | Rôle |
+|---|---|
+| `Respond__CleDemo` | Clé Groq du mode démonstration. **Jamais dans l'image ni dans le dépôt.** |
+| `ConnectionStrings__Default` | Chemin de la base SQLite, sur un volume persistant |
+| `Respond__DossierCles` | Dossier des clés signant les cookies de session |
+
+```
+docker build -t respond .
+docker run -p 8080:8080   -e Respond__CleDemo="votre_cle"   -v respond-donnees:/donnees   -v respond-cles:/cles   respond
+```
+
+**Les deux volumes sont obligatoires.** Sans `/donnees`, la base disparaît à
+chaque redéploiement. Sans `/cles`, les clés de signature sont régénérées,
+tous les cookies de session deviennent invalides et chaque visiteur perd son
+historique. Le dossier des clés est un secret : qui le lit peut forger des
+cookies de session.
+
+## Intégration continue
+
+Trois contrôles tournent à chaque poussée et chaque pull request :
+
+- compilation et tests sur Linux, avec rapport de couverture ;
+- recherche de paquets vulnérables, dépendances transitives comprises ;
+- recherche de secrets avec `gitleaks` sur **tout l'historique**, pas seulement
+  sur le dernier commit — une clé supprimée plus tard reste lisible dans le
+  commit qui l'a introduite. Cette analyse tourne aussi chaque lundi, parce
+  qu'une clé publiée aujourd'hui peut n'être reconnue comme telle que demain.
+
+L'image Docker est construite en CI, tests inclus : aucune image ne peut être
+produite à partir d'un code dont les tests échouent.
+
 ## Méthode de travail
 
 Projet développé avec l'assistance d'un agent IA. Les choix d'architecture, les
