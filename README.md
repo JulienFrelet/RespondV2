@@ -4,8 +4,12 @@ Générateur de réponses à des emails professionnels, propulsé par une API d'
 Application web ASP.NET Core avec un client JavaScript, architecture en quatre
 projets.
 
-> 🚧 **En construction.** Une démonstration en ligne arrivera quand le
-> déploiement sera en place.
+**→ [Essayer la démonstration](https://respond-myp9.onrender.com/)**
+
+Aucun compte, aucune installation : choisissez un profil, collez un email,
+cliquez. La clé API vient du serveur. L'hébergement est gratuit, donc le
+service s'endort après quinze minutes sans visite — la première page peut
+mettre une minute à venir.
 
 ## Ce que ça fait
 
