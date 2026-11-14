@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using RespondMetier.Models;
 
 namespace RespondData
@@ -8,7 +8,7 @@ namespace RespondData
     /// </summary>
     /// <remarks>
     /// The demo profiles exist so a visitor can click Generate and see a
-    /// result without filling anything in first. Three contrasting ones rather
+    /// result without filling anything in first. Four contrasting ones rather
     /// than a single generic one, because the point is to show that the tone
     /// and the signature really change with the profile.
     /// </remarks>
@@ -37,21 +37,39 @@ namespace RespondData
 
         /// <summary>
         /// Creates the schema when absent, then inserts the demo profiles
-        /// when the table is empty
+        /// that are missing
         /// </summary>
+        /// <remarks>
+        /// L'insertion porte sur les profils manquants, un par un, et non sur
+        /// la seule condition que la table soit vide. Avec cette derniere, un
+        /// profil de demonstration ajoute apres coup n'apparaissait jamais
+        /// sur une base deja remplie : il fallait vider la production pour le
+        /// voir, ce qui effacerait l'historique de tout le monde.
+        ///
+        /// Le rapprochement se fait sur le nom parmi les profils sans
+        /// session. C'est fiable parce qu'un profil de demonstration est en
+        /// lecture seule : personne ne peut le renommer ni le supprimer, donc
+        /// un nom absent signifie bien qu'il n'a jamais ete insere.
+        /// </remarks>
         public void Initialiser()
         {
             this.context.Database.EnsureCreated();
 
-            // Only seeded on an empty table. Re-inserting on every start would
-            // duplicate the profiles, and overwriting them would erase what a
-            // visitor changed.
-            if (this.context.Set<Profil>().Any())
+            List<string> dejaPresents = this.context.Set<Profil>()
+                .Where(profil => profil.SessionId == string.Empty)
+                .Select(profil => profil.Nom)
+                .ToList();
+
+            List<Profil> aInserer = ProfilsDeDemonstration()
+                .Where(profil => !dejaPresents.Contains(profil.Nom))
+                .ToList();
+
+            if (aInserer.Count == 0)
             {
                 return;
             }
 
-            this.context.Set<Profil>().AddRange(ProfilsDeDemonstration());
+            this.context.Set<Profil>().AddRange(aInserer);
             this.context.SaveChanges();
         }
 
@@ -97,7 +115,27 @@ namespace RespondData
                     ton: "decontracte et sympa",
                     signataire: "Lea Bonnet",
                     telephone: "03 80 55 44 33",
-                    courriel: "location@cles-de-bourgogne.fr")
+                    courriel: "location@cles-de-bourgogne.fr"),
+
+                // Un profil sans entreprise, volontairement : l'outil sert
+                // aussi aux courriers qu'un etudiant redige mal a l'aise,
+                // candidatures de stage et messages a l'administration. Le
+                // ton y est tres different des trois autres, ce qui montre
+                // mieux que le profil change reellement la reponse.
+                Construire(
+                    nom: "Etudiant",
+                    service: "BUT Informatique, 2e annee",
+                    entreprise: "IUT",
+                    domaines: "Candidatures de stage, echanges avec les enseignants et "
+                        + "l'administration, demandes de rendez-vous",
+                    description: "Etudiant en deuxieme annee de BUT. Ecrit a des enseignants, des "
+                        + "services administratifs et des entreprises pour des stages. "
+                        + "Doit rester poli et direct, sans tournures ampoulees ni "
+                        + "familiarite.",
+                    ton: "poli, clair et respectueux",
+                    signataire: "Theo Marchand",
+                    telephone: "",
+                    courriel: "theo.marchand@etu.exemple.fr")
             ];
         }
 
