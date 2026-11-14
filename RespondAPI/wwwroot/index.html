@@ -6,7 +6,7 @@
   <!--
     La politique de securite du contenu est envoyee en en-tete HTTP par le
     serveur, pas ici : la directive frame-ancestors est ignoree lorsqu'elle
-    est delivree par une balise meta. Voir EnTetesSecurite dans Program.cs.
+    est delivree par une balise meta. Voir Program.cs.
   -->
   <title>Respond — generateur de reponses email</title>
   <link rel="icon" href="favicon.ico" />
@@ -19,85 +19,348 @@
 </head>
 <body>
 
-<header class="entete">
-  <div class="marque">
-    <img src="img/logo.png" alt="" class="logo" width="40" height="40" />
-    <h1>Respond</h1>
+<div class="application">
 
-    <button id="btn-theme" class="bouton-theme" type="button">
-      <svg class="icone-lune" width="16" height="16" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-           aria-hidden="true">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-      </svg>
-      <svg class="icone-soleil" width="16" height="16" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-           aria-hidden="true">
-        <circle cx="12" cy="12" r="4.5" />
-        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-      </svg>
-      <span id="btn-theme-libelle">Mode sombre</span>
-    </button>
-  </div>
-  <p class="accroche">Generateur de reponses a des emails professionnels.</p>
-  <p class="bandeau-demo" id="bandeau-demo">
-    Mode demonstration. La cle API est fournie par le serveur, le quota est limite par heure.
-  </p>
-</header>
-
-<main class="colonnes">
-
-  <section class="panneau">
-    <h2>La demande</h2>
-
-    <label for="sel-profil">Profil d'entreprise</label>
-    <select id="sel-profil"></select>
-    <p class="indice" id="indice-profil"></p>
-
-    <label for="txt-email">Message recu</label>
-    <textarea id="txt-email" rows="10"
-              placeholder="Collez ici l'email auquel vous souhaitez repondre."></textarea>
-    <p class="indice"><span id="compteur-email">0</span> caracteres</p>
-
-    <label for="txt-contexte">Contexte (optionnel)</label>
-    <textarea id="txt-contexte" rows="3"
-              placeholder="Numero de suivi, delai, information utile pour cette reponse."></textarea>
-
-    <fieldset class="longueurs">
-      <legend>Longueur</legend>
-      <label><input type="radio" name="longueur" value="Courte" checked /> Courte</label>
-      <label><input type="radio" name="longueur" value="Complete" /> Complete</label>
-    </fieldset>
-
-    <button id="btn-generer" class="bouton-principal">Generer la reponse</button>
-    <p class="erreur" id="err-demande"></p>
-  </section>
-
-  <section class="panneau">
-    <h2>La reponse</h2>
-
-    <p class="attente" id="attente">Rien pour l'instant. Remplissez le formulaire et cliquez sur Generer.</p>
-
-    <div id="resultat" hidden>
-      <label for="txt-objet">Objet</label>
-      <input id="txt-objet" type="text" readonly />
-
-      <label for="txt-corps">Corps</label>
-      <textarea id="txt-corps" rows="16"></textarea>
-
-      <div class="actions">
-        <button id="btn-copier" class="bouton-secondaire">Copier</button>
-        <button id="btn-regenerer" class="bouton-secondaire">Regenerer</button>
-      </div>
-      <p class="indice">
-        Relisez toujours la reponse avant de l'envoyer. Rien n'est expedie automatiquement.
-      </p>
+  <!-- ══ Barre laterale ══════════════════════════════════════════════ -->
+  <aside class="barre-laterale">
+    <div class="marque">
+      <img src="img/logo.png" alt="" class="logo" width="34" height="34" />
+      <span class="marque-nom">Respond</span>
     </div>
 
-    <p class="erreur" id="err-resultat"></p>
-  </section>
+    <nav class="navigation">
+      <button class="onglet actif" data-vue="generer" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Générer</span>
+      </button>
+      <button class="onglet" data-vue="profils" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
+        <span>Profils</span>
+      </button>
+      <button class="onglet" data-vue="style" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Style mail</span>
+      </button>
+      <button class="onglet" data-vue="historique" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        <span>Historique</span>
+      </button>
+      <button class="onglet" data-vue="parametres" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10.6 3V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Paramètres</span>
+      </button>
+    </nav>
 
-</main>
+    <button id="btn-theme" class="bouton-theme" type="button">
+      <svg class="icone-lune" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icone-soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <span id="btn-theme-libelle">Mode sombre</span>
+    </button>
+  </aside>
+
+  <!-- ══ Contenu ═════════════════════════════════════════════════════ -->
+  <main class="contenu">
+
+    <!-- ── Générer ─────────────────────────────────────────────────── -->
+    <section class="vue active" id="vue-generer">
+      <header class="entete-vue">
+        <h1>Générer une réponse</h1>
+        <p class="bandeau-demo" id="bandeau-demo">
+          Mode démonstration : la clé API vient du serveur et le quota est limité par heure.
+          Ajoutez la vôtre dans Paramètres pour lever la limite.
+        </p>
+      </header>
+
+      <div class="colonnes">
+        <div class="panneau">
+          <h2>La demande</h2>
+
+          <label for="sel-profil">Profil d'entreprise</label>
+          <select id="sel-profil"></select>
+          <p class="indice" id="indice-profil"></p>
+
+          <label for="txt-email">Message reçu</label>
+          <textarea id="txt-email" rows="10"
+                    placeholder="Collez ici l'email auquel vous souhaitez répondre."></textarea>
+          <p class="indice"><span id="compteur-email">0</span> caractères</p>
+
+          <label for="txt-contexte">Contexte (optionnel)</label>
+          <textarea id="txt-contexte" rows="3"
+                    placeholder="Numéro de suivi, délai, information utile pour cette réponse."></textarea>
+
+          <fieldset class="longueurs">
+            <legend>Longueur</legend>
+            <label><input type="radio" name="longueur" value="Courte" checked /> Courte</label>
+            <label><input type="radio" name="longueur" value="Complete" /> Complète</label>
+          </fieldset>
+
+          <button id="btn-generer" class="bouton-principal" type="button">Générer la réponse</button>
+          <p class="erreur" id="err-demande"></p>
+        </div>
+
+        <div class="panneau">
+          <h2>La réponse</h2>
+
+          <p class="attente" id="attente">
+            Rien pour l'instant. Remplissez le formulaire et cliquez sur Générer.
+          </p>
+
+          <div id="resultat" hidden>
+            <label for="txt-objet">Objet</label>
+            <input id="txt-objet" type="text" readonly />
+
+            <label for="txt-corps">Corps</label>
+            <textarea id="txt-corps" rows="16"></textarea>
+
+            <div class="actions">
+              <button id="btn-copier" class="bouton-secondaire" type="button">Copier</button>
+              <button id="btn-regenerer" class="bouton-secondaire" type="button">Régénérer</button>
+            </div>
+            <p class="indice">
+              Relisez toujours la réponse avant de l'envoyer. Rien n'est expédié automatiquement.
+            </p>
+          </div>
+
+          <p class="erreur" id="err-resultat"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Profils ─────────────────────────────────────────────────── -->
+    <section class="vue" id="vue-profils" hidden>
+      <header class="entete-vue">
+        <h1>Profils</h1>
+        <p class="sous-titre">
+          Le contexte dans lequel vos réponses sont rédigées. Les profils de
+          démonstration sont partagés et en lecture seule.
+        </p>
+      </header>
+
+      <div class="barre-actions">
+        <button id="btn-nouveau-profil" class="bouton-principal compact" type="button">
+          + Nouveau profil
+        </button>
+      </div>
+
+      <p class="erreur" id="err-profils"></p>
+      <div class="cartes" id="liste-profils"></div>
+
+      <div class="panneau formulaire" id="formulaire-profil" hidden>
+        <h2 id="titre-formulaire-profil">Nouveau profil</h2>
+
+        <div class="deux-colonnes">
+          <div>
+            <label for="pf-nom">Nom du profil *</label>
+            <input id="pf-nom" type="text" placeholder="Ex : SAV électroménager" />
+          </div>
+          <div>
+            <label for="pf-service">Service ou poste *</label>
+            <input id="pf-service" type="text" placeholder="Ex : Service après-vente" />
+          </div>
+        </div>
+
+        <div class="deux-colonnes">
+          <div>
+            <label for="pf-entreprise">Entreprise *</label>
+            <input id="pf-entreprise" type="text" />
+          </div>
+          <div>
+            <label for="pf-domaines">Domaines d'activité</label>
+            <input id="pf-domaines" type="text" />
+          </div>
+        </div>
+
+        <label for="pf-description">Description de l'entreprise</label>
+        <textarea id="pf-description" rows="3"></textarea>
+
+        <div class="deux-colonnes">
+          <div>
+            <label for="pf-ton">Ton de communication</label>
+            <select id="pf-ton">
+              <option>professionnel et chaleureux</option>
+              <option>formel et professionnel</option>
+              <option>décontracté et sympa</option>
+              <option>technique et précis</option>
+            </select>
+          </div>
+          <div>
+            <label for="pf-langue">Langue</label>
+            <select id="pf-langue">
+              <option>français</option>
+              <option>anglais</option>
+              <option>espagnol</option>
+              <option>allemand</option>
+            </select>
+          </div>
+        </div>
+
+        <h3>Signature</h3>
+        <div class="deux-colonnes">
+          <div>
+            <label for="pf-sig-nom">Nom du signataire</label>
+            <input id="pf-sig-nom" type="text" />
+          </div>
+          <div>
+            <label for="pf-sig-tel">Téléphone</label>
+            <input id="pf-sig-tel" type="text" />
+          </div>
+        </div>
+        <label for="pf-sig-email">Email</label>
+        <input id="pf-sig-email" type="text" />
+
+        <fieldset class="cases">
+          <legend>Lignes incluses dans la signature</legend>
+          <label><input type="checkbox" id="pf-inc-nom" checked /> Nom</label>
+          <label><input type="checkbox" id="pf-inc-service" checked /> Service</label>
+          <label><input type="checkbox" id="pf-inc-entreprise" checked /> Entreprise</label>
+          <label><input type="checkbox" id="pf-inc-tel" checked /> Téléphone</label>
+          <label><input type="checkbox" id="pf-inc-email" checked /> Email</label>
+        </fieldset>
+
+        <p class="erreur" id="err-formulaire-profil"></p>
+
+        <div class="actions">
+          <button id="btn-annuler-profil" class="bouton-secondaire" type="button">Annuler</button>
+          <button id="btn-enregistrer-profil" class="bouton-principal compact" type="button">
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Style mail ──────────────────────────────────────────────── -->
+    <section class="vue" id="vue-style" hidden>
+      <header class="entete-vue">
+        <h1>Style mail</h1>
+        <p class="sous-titre">
+          Les règles appliquées à chaque réponse. Conservées dans votre navigateur.
+        </p>
+      </header>
+
+      <div class="panneau">
+        <h2>Formules</h2>
+
+        <label class="case-ligne">
+          <input type="checkbox" id="rg-ouverture" checked />
+          Commencer par une formule d'ouverture
+        </label>
+        <select id="rg-formule-ouverture">
+          <option>Bonjour,</option>
+          <option>Bonjour [Prénom],</option>
+          <option>Madame, Monsieur,</option>
+          <option value="autre">Autre…</option>
+        </select>
+        <input id="rg-ouverture-libre" type="text" placeholder="Votre formule d'ouverture" hidden />
+
+        <label class="case-ligne">
+          <input type="checkbox" id="rg-cloture" checked />
+          Terminer par une formule de clôture
+        </label>
+        <select id="rg-formule-cloture">
+          <option>Cordialement,</option>
+          <option>Bien cordialement,</option>
+          <option>Avec nos meilleures salutations,</option>
+          <option>À votre disposition,</option>
+          <option value="autre">Autre…</option>
+        </select>
+        <input id="rg-cloture-libre" type="text" placeholder="Votre formule de clôture" hidden />
+
+        <h2>Règles personnalisées</h2>
+        <label for="rg-personnalisees">Une règle par ligne</label>
+        <textarea id="rg-personnalisees" rows="6"
+                  placeholder="Ex : Cite toujours le numéro de dossier&#10;Ex : Ne jamais proposer de remise"></textarea>
+
+        <div class="actions">
+          <button id="btn-enregistrer-style" class="bouton-principal compact" type="button">
+            Enregistrer
+          </button>
+        </div>
+        <p class="confirmation" id="confirmation-style"></p>
+      </div>
+    </section>
+
+    <!-- ── Historique ──────────────────────────────────────────────── -->
+    <section class="vue" id="vue-historique" hidden>
+      <header class="entete-vue">
+        <h1>Historique</h1>
+        <p class="sous-titre">
+          Vos réponses générées. Elles ne sont visibles que depuis ce navigateur.
+        </p>
+      </header>
+
+      <div class="barre-actions">
+        <input id="recherche-historique" type="text" placeholder="Rechercher dans l'historique…" />
+      </div>
+
+      <p class="erreur" id="err-historique"></p>
+      <p class="attente" id="historique-vide" hidden>Aucune réponse pour l'instant.</p>
+
+      <div class="colonnes-historique" id="historique-split" hidden>
+        <div class="liste-historique" id="liste-historique"></div>
+
+        <div class="panneau" id="detail-historique" hidden>
+          <h2 id="detail-objet"></h2>
+          <p class="indice" id="detail-meta"></p>
+          <textarea id="detail-corps" rows="18" readonly></textarea>
+          <div class="actions">
+            <button id="btn-detail-copier" class="bouton-secondaire" type="button">Copier</button>
+            <button id="btn-detail-supprimer" class="bouton-secondaire danger" type="button">
+              Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Paramètres ──────────────────────────────────────────────── -->
+    <section class="vue" id="vue-parametres" hidden>
+      <header class="entete-vue">
+        <h1>Paramètres</h1>
+      </header>
+
+      <div class="panneau">
+        <h2>Ma clé API</h2>
+        <p class="indice">
+          Sans clé, l'application utilise celle du serveur, limitée par heure.
+          Avec la vôtre, la limite est bien plus large.
+        </p>
+        <p class="indice">
+          Votre clé reste dans ce navigateur et n'est conservée que le temps de
+          l'onglet. Elle est transmise au serveur à chaque génération, qui s'en
+          sert puis l'oublie : elle n'est jamais enregistrée.
+        </p>
+
+        <label for="pm-cle">Clé Groq</label>
+        <input id="pm-cle" type="password" placeholder="gsk_…" autocomplete="off" />
+
+        <div class="actions">
+          <button id="btn-enregistrer-cle" class="bouton-principal compact" type="button">
+            Utiliser ma clé
+          </button>
+          <button id="btn-oublier-cle" class="bouton-secondaire" type="button">
+            Oublier ma clé
+          </button>
+        </div>
+        <p class="confirmation" id="confirmation-cle"></p>
+      </div>
+
+      <div class="panneau">
+        <h2>Mes données</h2>
+        <p class="indice">
+          Vos profils et votre historique sont rattachés à un cookie anonyme.
+          Aucun compte, aucune adresse email, aucun mot de passe.
+        </p>
+        <div class="actions">
+          <button id="btn-effacer-local" class="bouton-secondaire danger" type="button">
+            Effacer mes réglages de ce navigateur
+          </button>
+        </div>
+        <p class="confirmation" id="confirmation-donnees"></p>
+      </div>
+    </section>
+
+  </main>
+</div>
 
 <script type="module" src="client/app.js"></script>
 </body>

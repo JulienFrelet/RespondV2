@@ -4,6 +4,9 @@
  * Le modele existe pour donner un nom aux champs cote client plutot que de
  * promener des objets JSON anonymes dans les vues. Si l'API renomme un champ,
  * seul ce fichier change.
+ *
+ * Noter ce que l'API ne renvoie pas : l'identifiant de session. Il reste cote
+ * serveur, et le client n'a aucune raison de le connaitre.
  */
 export class Profil {
   /**
@@ -15,12 +18,16 @@ export class Profil {
     this.service = donnees.service ?? '';
     this.entreprise = donnees.entreprise ?? '';
     this.domaines = donnees.domaines ?? '';
+    this.description = donnees.description ?? '';
     this.ton = donnees.ton ?? '';
+    this.langue = donnees.langue ?? 'français';
+    this.estProfilDeDemonstration = donnees.estProfilDeDemonstration === true;
+    this.signature = donnees.signature ?? {};
   }
 
   /**
-   * Resume affiche sous le selecteur, pour que l'utilisateur voie d'un coup
-   * d'oeil le contexte dans lequel la reponse sera redigee.
+   * Resume affiche sous le selecteur et sur la carte, pour que l'utilisateur
+   * voie d'un coup d'oeil le contexte dans lequel la reponse sera redigee.
    * @returns {string} le resume du profil
    */
   resume() {

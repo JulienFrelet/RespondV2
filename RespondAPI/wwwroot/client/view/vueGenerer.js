@@ -1,18 +1,22 @@
+import { lireRegles, lireCleApi } from '../service/stockageLocal.js';
+
 /**
  * Vue de generation : relie le formulaire au service.
  *
  * Regle absolue heritee de la version Electron : aucune operation asynchrone
  * ne doit pouvoir laisser l'interface bloquee. Chaque appel est entoure d'un
  * try / catch / finally, et l'etat du bouton est restaure dans le finally.
- * Un bouton coince sur « Generation... » sans message d'erreur est le pire
+ * Un bouton coince sur « Génération… » sans message d'erreur est le pire
  * defaut possible, parce que l'utilisateur n'a rien a quoi se raccrocher.
  */
 export class VueGenerer {
   /**
    * @param {import('../service/serviceReponses.js').ServiceReponses} service
+   * @param {import('../service/serviceProfils.js').ServiceProfils} serviceProfils
    */
-  constructor(service) {
+  constructor(service, serviceProfils) {
     this.service = service;
+    this.serviceProfils = serviceProfils;
     this.profils = [];
 
     this.selProfil = document.getElementById('sel-profil');
@@ -22,6 +26,7 @@ export class VueGenerer {
     this.compteurEmail = document.getElementById('compteur-email');
     this.btnGenerer = document.getElementById('btn-generer');
     this.errDemande = document.getElementById('err-demande');
+    this.bandeau = document.getElementById('bandeau-demo');
 
     this.attente = document.getElementById('attente');
     this.resultat = document.getElementById('resultat');
@@ -44,22 +49,42 @@ export class VueGenerer {
     this.btnCopier.addEventListener('click', () => this.#copier());
 
     document.addEventListener('keydown', (evenement) => {
-      if ((evenement.ctrlKey || evenement.metaKey) && evenement.key === 'Enter') {
+      const visible = !document.getElementById('vue-generer').hidden;
+
+      if (visible && (evenement.ctrlKey || evenement.metaKey) && evenement.key === 'Enter') {
         this.#generer();
       }
     });
 
-    await this.#chargerProfils();
+    this.majBandeau();
+    await this.chargerProfils();
   }
 
   /**
-   * Charge les profils et remplit le selecteur.
+   * Adapte le bandeau selon qu'une cle personnelle est enregistree.
+   */
+  majBandeau() {
+    const avecCle = lireCleApi().length > 0;
+
+    this.bandeau.textContent = avecCle
+      ? 'Votre clé est utilisée pour cette session. Elle n\'est jamais enregistrée '
+        + 'par le serveur.'
+      : 'Mode démonstration : la clé API vient du serveur et le quota est limité '
+        + 'par heure. Ajoutez la vôtre dans Paramètres pour lever la limite.';
+
+    this.bandeau.classList.toggle('bandeau-cle', avecCle);
+  }
+
+  /**
+   * Charge les profils et remplit le selecteur, en gardant la selection
+   * courante quand elle existe toujours.
    * @returns {Promise<void>}
    */
-  async #chargerProfils() {
-    try {
-      this.profils = await this.service.listerProfils();
+  async chargerProfils() {
+    const selectionActuelle = this.selProfil.value;
 
+    try {
+      this.profils = await this.serviceProfils.lister();
       this.selProfil.replaceChildren();
 
       for (const profil of this.profils) {
@@ -67,6 +92,10 @@ export class VueGenerer {
         option.value = String(profil.id);
         option.textContent = profil.nom;
         this.selProfil.appendChild(option);
+      }
+
+      if (this.profils.some((p) => String(p.id) === selectionActuelle)) {
+        this.selProfil.value = selectionActuelle;
       }
 
       this.#afficherResumeProfil();
@@ -111,7 +140,7 @@ export class VueGenerer {
     this.errResultat.textContent = '';
 
     if (this.txtEmail.value.trim().length === 0) {
-      this.errDemande.textContent = 'Collez le message auquel vous souhaitez repondre.';
+      this.errDemande.textContent = 'Collez le message auquel vous souhaitez répondre.';
       return;
     }
 
@@ -122,7 +151,7 @@ export class VueGenerer {
 
     const libelleOrigine = this.btnGenerer.textContent;
     this.btnGenerer.disabled = true;
-    this.btnGenerer.textContent = 'Generation...';
+    this.btnGenerer.textContent = 'Génération…';
 
     try {
       const reponse = await this.service.generer({
@@ -130,6 +159,7 @@ export class VueGenerer {
         emailRecu: this.txtEmail.value,
         contexte: this.txtContexte.value,
         longueur: this.#longueurChoisie(),
+        regles: lireRegles(),
       });
 
       this.#afficherResultat(reponse);
@@ -160,7 +190,7 @@ export class VueGenerer {
   async #copier() {
     try {
       await navigator.clipboard.writeText(this.txtCorps.value);
-      this.btnCopier.textContent = 'Copie';
+      this.btnCopier.textContent = 'Copié';
       this.btnCopier.classList.add('confirme');
 
       setTimeout(() => {
@@ -168,8 +198,8 @@ export class VueGenerer {
         this.btnCopier.classList.remove('confirme');
       }, 1600);
     } catch {
-      // Presse-papier refuse par le navigateur : le texte reste selectionnable.
-      this.errResultat.textContent = 'Copie refusee par le navigateur. Selectionnez le texte.';
+      this.errResultat.textContent =
+        'Copie refusée par le navigateur. Sélectionnez le texte à la main.';
     }
   }
 }

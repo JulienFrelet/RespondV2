@@ -104,50 +104,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── En-tete ───────────────────────────────────────────────────────────── */
-
-.entete {
-  max-width: 1140px;
-  margin: 0 auto;
-  padding: 36px 0 24px;
-}
-
-.marque {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo {
-  border-radius: var(--radius-sm);
-  object-fit: contain;
-}
-
-.entete h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--text);
-}
-
-.accroche {
-  margin: 6px 0 18px;
-  color: var(--text-muted);
-}
-
-.bandeau-demo {
-  margin: 0;
-  padding: 12px 16px;
-  border: 1px solid var(--primary-light);
-  border-left: 3px solid var(--primary);
-  border-radius: var(--radius);
-  background: var(--primary-pale);
-  color: var(--text);
-  font-size: 0.88rem;
-  font-weight: 500;
-}
-
 /* ── Panneaux ──────────────────────────────────────────────────────────── */
 
 .colonnes {
@@ -325,28 +281,128 @@ button {
   background: var(--danger-light);
 }
 
-/* ── Bascule de theme ──────────────────────────────────────────────────── */
 
-.bouton-theme {
-  margin-left: auto;
-  display: inline-flex;
+/* ── Mise en page generale ─────────────────────────────────────────────── */
+
+.application {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 880px) {
+  .application { grid-template-columns: 1fr; }
+}
+
+/* ── Barre laterale ────────────────────────────────────────────────────── */
+
+.barre-laterale {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 22px 16px;
+  background: var(--navy);
+  color: #cbd5e1;
+}
+
+@media (max-width: 880px) {
+  .barre-laterale { gap: 16px; }
+}
+
+.marque {
+  display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 13px;
-  border: 1px solid var(--border);
+  gap: 11px;
+  padding: 0 6px;
+}
+
+.logo {
   border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.82rem;
+  object-fit: contain;
+}
+
+.marque-nom {
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+@media (max-width: 880px) {
+  .navigation {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+}
+
+.onglet {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #cbd5e1;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.onglet svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.onglet:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+
+.onglet.actif {
+  background: var(--primary);
+  color: #fff;
   font-weight: 600;
 }
 
-.bouton-theme:hover {
-  border-color: var(--primary);
-  color: var(--primary);
+.bouton-theme {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
-/* Une seule icone visible a la fois : celle de la destination du clic. */
+.bouton-theme:hover { border-color: var(--primary); color: #fff; }
+
+.bouton-theme svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .bouton-theme .icone-soleil { display: none; }
 .bouton-theme .icone-lune { display: block; }
 
@@ -356,4 +412,247 @@ button {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .bouton-theme .icone-soleil { display: block; }
   :root:not([data-theme="light"]) .bouton-theme .icone-lune { display: none; }
+}
+
+/* ── Contenu et vues ───────────────────────────────────────────────────── */
+
+.contenu {
+  padding: 30px 28px 56px;
+  max-width: 1180px;
+}
+
+.entete-vue { margin-bottom: 22px; }
+
+.entete-vue h1 {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.sous-titre {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.bandeau-demo {
+  margin: 12px 0 0;
+  padding: 11px 15px;
+  border: 1px solid var(--primary-light);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--primary-pale);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.bandeau-demo.bandeau-cle {
+  border-color: var(--success);
+  border-left-color: var(--success);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.barre-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.barre-actions input[type="text"] { max-width: 380px; }
+
+.bouton-principal.compact {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 18px;
+}
+
+.bouton-secondaire.petit {
+  flex: none;
+  padding: 6px 12px;
+  font-size: 0.84rem;
+}
+
+.bouton-secondaire.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.bouton-secondaire.danger:hover { background: rgba(239, 68, 68, 0.08); }
+
+.confirmation {
+  margin: 12px 0 0;
+  color: var(--success);
+  font-size: 0.86rem;
+  font-weight: 600;
+  min-height: 1.2em;
+}
+
+/* ── Cartes de profils ─────────────────────────────────────────────────── */
+
+.cartes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.carte {
+  position: relative;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.carte h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.etiquette {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--primary-light);
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.carte-resume {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.carte-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Formulaires ───────────────────────────────────────────────────────── */
+
+.panneau.formulaire { margin-top: 20px; }
+
+.panneau h3 {
+  margin: 22px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.deux-colonnes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 680px) {
+  .deux-colonnes { grid-template-columns: 1fr; }
+}
+
+.cases {
+  margin: 18px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.cases legend {
+  padding: 0 6px;
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.cases label {
+  display: inline-block;
+  margin: 0 18px 0 0;
+  font-weight: 400;
+}
+
+.cases input[type="checkbox"],
+.case-ligne input[type="checkbox"] { accent-color: var(--primary); }
+
+.case-ligne {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0 8px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+/* ── Historique ────────────────────────────────────────────────────────── */
+
+.colonnes-historique {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .colonnes-historique { grid-template-columns: 1fr; }
+}
+
+.liste-historique {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.ligne-historique {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-align: left;
+  font: inherit;
+  color: var(--text-body);
+}
+
+.ligne-historique:hover { border-color: var(--primary); }
+
+.ligne-historique.selectionnee {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.ligne-objet {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.ligne-meta {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.ligne-apercu {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+#detail-historique h2 {
+  color: var(--text);
+  font-size: 1.02rem;
+  text-transform: none;
+  letter-spacing: normal;
 }
