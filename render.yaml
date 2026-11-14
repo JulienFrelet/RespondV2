@@ -1,0 +1,33 @@
+# Description de l'infrastructure, lue par Render a chaque deploiement.
+#
+# L'interet de ce fichier n'est pas d'eviter quelques clics : il met la
+# configuration de production dans le depot, versionnee et relue comme du
+# code. Un reglage change a la main dans une interface n'a ni auteur, ni
+# date, ni justification.
+services:
+  - type: web
+    name: respond
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+
+    # La branche surveillee. Une poussee sur main declenche un deploiement.
+    branch: main
+
+    healthCheckPath: /
+
+    envVars:
+      - key: ASPNETCORE_HTTP_PORTS
+        value: 8080
+
+      # sync: false signifie que la valeur n'est pas dans ce fichier et doit
+      # etre saisie dans l'interface de Render. C'est la raison d'etre du
+      # reglage : une chaine de connexion et une cle API sont des secrets, et
+      # un secret ecrit dans un depot reste lisible dans l'historique meme
+      # apres avoir ete retire.
+      - key: ConnectionStrings__Default
+        sync: false
+
+      - key: Respond__CleDemo
+        sync: false

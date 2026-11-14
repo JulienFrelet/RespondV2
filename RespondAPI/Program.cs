@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -39,49 +40,89 @@ builder.WebHost.ConfigureKestrel(options =>
     options.AddServerHeader = false;
 });
 
+// L'application tourne derriere le proxy de l'hebergeur, qui termine TLS et
+// transmet la requete en clair. Sans lire les en-tetes qu'il ajoute,
+// l'application se croit en HTTP : UseHttpsRedirection renvoie alors vers
+// HTTPS, le proxy retransmet en clair, et le navigateur boucle.
+//
+// ForwardLimit vaut 1, et ce n'est pas un detail : X-Forwarded-For est une
+// liste a laquelle n'importe qui peut ajouter une entree avant d'atteindre le
+// proxy. ASP.NET lit la liste par la droite, donc la derniere entree, celle
+// que le proxy a ecrite lui-meme. Accepter plus loin reviendrait a croire le
+// client sur parole, et la limitation de debit, qui partitionne par adresse,
+// se contournerait en ajoutant un en-tete.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+
+    // L'adresse du proxy n'est pas connue a l'avance et change au gre des
+    // redeploiements de l'hebergeur. La protection ne repose donc pas sur une
+    // liste d'adresses de confiance mais sur ForwardLimit ci-dessus.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 // Configure the database.
+//
+// Deux moteurs sont acceptes, choisis d'apres la chaine de connexion : SQLite
+// en developpement, ou aucune installation n'est souhaitable, et PostgreSQL
+// en production, ou l'hebergement gratuit ne fournit pas de disque persistant
+// et ou un fichier disparaitrait a chaque redeploiement.
+//
+// Le choix se lit dans la configuration plutot que dans un reglage separe :
+// une chaine PostgreSQL et un moteur SQLite ne peuvent donc pas se
+// contredire.
 string chaineConnexion = builder.Configuration.GetConnectionString("Default")
     ?? "Data Source=respond.db";
 
-// SQLite ouvre un fichier, il ne cree pas le dossier qui le contient. En
-// production la base vit sur un volume persistant, et si ce dossier n'existe
-// pas encore le demarrage echoue sur une erreur qui ne dit pas laquelle des
-// deux causes est en jeu : chemin absent ou droits insuffisants. On cree donc
-// le dossier ici, ou l'echec est explicite.
-string fichierBase = new SqliteConnectionStringBuilder(chaineConnexion).DataSource;
-string dossierBase = Path.GetDirectoryName(Path.GetFullPath(fichierBase)) ?? string.Empty;
+chaineConnexion = ChaineConnexion.Normaliser(chaineConnexion);
 
-if (dossierBase.Length > 0)
+if (ChaineConnexion.EstPostgres(chaineConnexion))
 {
-    Directory.CreateDirectory(dossierBase);
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(chaineConnexion));
 }
+else
+{
+    // SQLite ouvre un fichier, il ne cree pas le dossier qui le contient. Si
+    // ce dossier n'existe pas, le demarrage echoue sur une erreur qui ne dit
+    // pas laquelle des deux causes est en jeu : chemin absent ou droits
+    // insuffisants. On le cree donc ici, ou l'echec est explicite.
+    string fichierBase = new SqliteConnectionStringBuilder(chaineConnexion).DataSource;
+    string dossierBase = Path.GetDirectoryName(Path.GetFullPath(fichierBase)) ?? string.Empty;
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(chaineConnexion));
+    if (dossierBase.Length > 0)
+    {
+        Directory.CreateDirectory(dossierBase);
+    }
+
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite(chaineConnexion));
+}
 
 builder.Services.AddScoped<InitialiseurBaseDeDonnees>();
 
 // Identifie un visiteur sans compte. Le cookie porte une valeur signee par la
 // pile de protection des donnees : un identifiant brut serait forgeable, et
 // n'importe qui pourrait lire l'historique d'un autre en recopiant sa valeur.
-// Les cles de signature sont persistees dans un dossier configurable.
+//
+// Les cles de signature vivent en base, avec le reste des donnees.
 //
 // Par defaut, ASP.NET les range dans le profil de l'utilisateur courant. Dans
 // un conteneur, ce dossier est ephemere : au moindre redeploiement les cles
 // changent, tous les cookies de session deviennent invalides, et chaque
-// visiteur perd son historique. Avec plusieurs instances, chacune aurait ses
-// propres cles et un visiteur basculerait d'identite a chaque requete.
+// visiteur perd son historique. Un volume persistant reglait le probleme au
+// prix d'un montage obligatoire, et interdisait toujours plusieurs instances,
+// chacune ayant eu ses propres cles.
 //
-// Le chemin pointe vers un volume persistant en production. Le dossier doit
-// etre traite comme un secret : qui le lit peut forger des cookies de session.
-string dossierCles = builder.Configuration["Respond:DossierCles"]
-    ?? Path.Combine(builder.Environment.ContentRootPath, "cles-protection");
-
-Directory.CreateDirectory(dossierCles);
-
+// En base, les cles survivent au redeploiement et sont partagees par toutes
+// les instances. Ces lignes sont un secret : qui les lit peut forger un
+// cookie de session. Elles ne sont exposees par aucune route.
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(dossierCles))
+    .PersistKeysToDbContext<AppDbContext>()
     .SetApplicationName("Respond");
+
 builder.Services.AddSingleton<ISessionVisiteur, SessionVisiteur>();
 
 // Register DAOs.
@@ -152,6 +193,11 @@ using (IServiceScope portee = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+//
+// En tout premier : les en-tetes du proxy doivent etre appliques avant que
+// quoi que ce soit ne lise le protocole ou l'adresse du client.
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     // HSTS indique au navigateur de n'utiliser que HTTPS pour ce domaine,

@@ -1,12 +1,21 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RespondMetier.Models;
 
 namespace RespondData
 {
     /// <summary>
-    /// Represents the connection and configuration of the SQLite database
+    /// Represents the connection and configuration of the database
     /// </summary>
-    public class AppDbContext : DbContext
+    /// <remarks>
+    /// Le contexte porte aussi les cles qui signent les cookies de session.
+    /// Elles etaient auparavant ecrites dans un dossier, ce qui imposait un
+    /// volume persistant et interdisait plusieurs instances : chacune aurait
+    /// eu ses propres cles, et un visiteur aurait change d'identite a chaque
+    /// requete. En base, les cles survivent au redeploiement et sont partagees
+    /// par toutes les instances, sans rien a monter.
+    /// </remarks>
+    public class AppDbContext : DbContext, IDataProtectionKeyContext
     {
         #region DbSets
 
@@ -24,6 +33,19 @@ namespace RespondData
         public DbSet<ReponseGeneree> Historique
         {
             get { return Set<ReponseGeneree>(); }
+        }
+
+        /// <summary>
+        /// Represents the keys signing the session cookies
+        /// </summary>
+        /// <remarks>
+        /// Ces lignes sont un secret : qui les lit peut forger un cookie de
+        /// session et se faire passer pour n'importe quel visiteur. Elles ne
+        /// sont exposees par aucune route.
+        /// </remarks>
+        public DbSet<DataProtectionKey> DataProtectionKeys
+        {
+            get { return Set<DataProtectionKey>(); }
         }
 
         #endregion

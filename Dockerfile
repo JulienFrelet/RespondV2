@@ -41,14 +41,11 @@ USER $APP_UID
 
 COPY --from=compilation /application .
 
-# Deux volumes à monter en production :
-#   /donnees : la base SQLite, qui doit survivre aux redéploiements ;
-#   /cles    : les clés signant les cookies de session. Sans persistance,
-#              chaque redéploiement invalide toutes les sessions et chaque
-#              visiteur perd son historique. Ce dossier est un secret : qui le
-#              lit peut forger des cookies de session.
+# La chaîne de connexion par défaut vise un volume, pour qui lance l'image
+# telle quelle avec SQLite. En production elle est remplacée par une chaîne
+# PostgreSQL, et aucun volume n'est alors nécessaire : les clés qui signent
+# les cookies de session sont rangées en base avec le reste des données.
 ENV ConnectionStrings__Default="Data Source=/donnees/respond.db" \
-    Respond__DossierCles="/cles" \
     ASPNETCORE_HTTP_PORTS=8080
 
 EXPOSE 8080

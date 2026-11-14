@@ -57,20 +57,28 @@ namespace RespondData.DAO
                 return this.Lister(sessionId);
             }
 
-            // EF.Functions.Like maps to the SQL LIKE operator, which SQLite
-            // applies case insensitively on ASCII. Doing the filtering in SQL
-            // rather than in memory matters once the history grows.
+            // EF.Functions.Like maps to the SQL LIKE operator. Doing the
+            // filtering in SQL rather than in memory matters once the history
+            // grows.
+            //
+            // Les deux cotes sont mis en minuscules avant la comparaison.
+            // SQLite applique LIKE sans tenir compte de la casse sur l'ASCII,
+            // PostgreSQL en tient compte : sans cette mise en minuscules, une
+            // recherche sur « facture » cesserait de trouver « Facture » une
+            // fois en production, sans que rien ne signale le changement.
+            // ToLower se traduit en LOWER sur les deux moteurs.
+            //
             // Les jokers de LIKE sont echappes : sans cela, une recherche sur
             // « % » remonterait tout l'historique, et « _ » ferait correspondre
             // n'importe quel caractere. Ce n'est pas une injection, EF
             // parametre la requete, mais le resultat serait faux.
-            string motif = "%" + EchapperJokers(motCle.Trim()) + "%";
+            string motif = "%" + EchapperJokers(motCle.Trim().ToLowerInvariant()) + "%";
 
             return this.PourSession(sessionId)
-                .Where(reponse => EF.Functions.Like(reponse.Objet, motif, "\\")
-                               || EF.Functions.Like(reponse.Texte, motif, "\\")
-                               || EF.Functions.Like(reponse.NomProfil, motif, "\\")
-                               || EF.Functions.Like(reponse.NomCleApi, motif, "\\"))
+                .Where(reponse => EF.Functions.Like(reponse.Objet.ToLower(), motif, "\\")
+                               || EF.Functions.Like(reponse.Texte.ToLower(), motif, "\\")
+                               || EF.Functions.Like(reponse.NomProfil.ToLower(), motif, "\\")
+                               || EF.Functions.Like(reponse.NomCleApi.ToLower(), motif, "\\"))
                 .OrderByDescending(reponse => reponse.Date)
                 .ToList();
         }

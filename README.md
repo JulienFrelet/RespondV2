@@ -19,7 +19,7 @@ Rien n'est jamais envoyé automatiquement : vous relisez toujours avant.
 |---|---|
 | Langage | C# / .NET 10 |
 | API | ASP.NET Core, contrôleurs |
-| Persistance | SQLite via Entity Framework Core |
+| Persistance | Entity Framework Core — SQLite en local, PostgreSQL en production |
 | Client | JavaScript natif, structure MVC, aucune dépendance |
 | Tests | xUnit, doublures écrites à la main |
 
@@ -46,6 +46,8 @@ Chaque point ci-dessous est une décision, pas un réglage par défaut.
   identifiant brut serait forgeable, il suffirait de recopier celui d'un autre
   pour lire son historique. Cookie `HttpOnly`, `SameSite=Lax`, `Secure` hors
   développement, identifiant de 32 octets tirés du générateur cryptographique.
+  Les clés de signature vivent en base, donc elles survivent au redéploiement
+  et sont partagées par toutes les instances.
 - **Injection de prompt.** L'email reçu est une donnée non fiable. Instructions
   et message voyagent comme deux messages distincts, jamais concaténés, et le
   modèle est explicitement instruit de ne pas obéir au contenu analysé. Aucune
@@ -81,15 +83,64 @@ dotnet user-secrets set "Respond:CleDemo" "votre_cle" --project RespondAPI
 
 ## Déploiement
 
-L'application se construit en image Docker et se déploie sur Azure App Service.
+L'application se construit en image Docker et se déploie sur
+[Render](https://render.com), avec une base PostgreSQL chez
+[Neon](https://neon.com). Les deux offres gratuites suffisent et ne demandent
+pas de carte bancaire.
+
+### Deux moteurs de base, un seul code
+
+| Environnement | Moteur | Pourquoi |
+|---|---|---|
+| Développement | SQLite | Un fichier, rien à installer |
+| Production | PostgreSQL | L'hébergement gratuit ne fournit pas de disque persistant |
+
+Le moteur est déduit de la chaîne de connexion, pas d'un réglage séparé : une
+chaîne PostgreSQL et un moteur SQLite ne peuvent donc pas se contredire.
+
+Les hébergeurs publient leur base sous forme d'URL
+(`postgresql://utilisateur:secret@hôte/base`), une forme que Npgsql n'accepte
+pas — il attend des paires `clé=valeur`. La conversion est isolée dans
+`ChaineConnexion`, à part du démarrage, parce qu'une fonction pure se teste.
+
+### Rien à monter
+
+Les clés qui signent les cookies de session vivent **en base**, avec le reste
+des données. Auparavant elles étaient écrites dans un dossier, ce qui imposait
+un volume persistant et interdisait toujours plusieurs instances : chacune
+aurait eu ses propres clés, et un visiteur aurait changé d'identité à chaque
+requête. Ces lignes sont un secret — qui les lit peut forger un cookie de
+session — et ne sont exposées par aucune route.
+
+Le conteneur est donc **sans état** : il se redéploie, se duplique et se jette
+sans que personne ne perde son historique.
 
 ### Variables d'environnement
 
 | Variable | Rôle |
 |---|---|
+| `ConnectionStrings__Default` | L'URL PostgreSQL fournie par Neon |
 | `Respond__CleDemo` | Clé Groq du mode démonstration. **Jamais dans l'image ni dans le dépôt.** |
-| `ConnectionStrings__Default` | Chemin de la base SQLite, sur un stockage persistant |
-| `Respond__DossierCles` | Dossier des clés signant les cookies de session |
+
+`render.yaml` décrit le service et déclare ces deux variables en `sync: false`,
+c'est-à-dire saisies dans l'interface et absentes du dépôt. Mettre la
+configuration de production sous contrôle de version lui donne un auteur, une
+date et une justification, ce qu'un réglage changé à la main dans une
+interface n'a pas. Un secret, lui, n'y a pas sa place : une fois poussé, il
+reste lisible dans l'historique même après avoir été retiré.
+
+### Derrière un proxy
+
+L'hébergeur termine TLS et transmet la requête en clair. Sans lire les
+en-têtes qu'il ajoute, l'application se croit en HTTP, redirige vers HTTPS, et
+le navigateur boucle.
+
+`ForwardLimit` vaut 1, et ce n'est pas un détail : `X-Forwarded-For` est une
+liste à laquelle n'importe qui peut ajouter une entrée avant d'atteindre le
+proxy. ASP.NET la lit par la droite, donc la dernière entrée, celle que le
+proxy a écrite lui-même. Accepter plus loin reviendrait à croire le client sur
+parole, et la limitation de débit, qui partitionne par adresse, se
+contournerait en ajoutant un en-tête.
 
 ### En local
 
@@ -98,62 +149,8 @@ docker build -t respond .
 ```
 
 ```
-docker run -p 8080:8080 -e Respond__CleDemo="votre_cle" -v respond-donnees:/donnees -v respond-cles:/cles respond
+docker run -p 8080:8080 -e Respond__CleDemo="votre_cle" -v respond-donnees:/donnees respond
 ```
-
-**Les deux volumes sont obligatoires.** Sans `/donnees`, la base disparaît à
-chaque redéploiement. Sans `/cles`, les clés de signature sont régénérées,
-tous les cookies de session deviennent invalides et chaque visiteur perd son
-historique. Le dossier des clés est un secret : qui le lit peut forger des
-cookies de session.
-
-### Sur Azure App Service
-
-Un plan **Linux B1** au minimum : le palier gratuit ne prend pas en charge les
-images personnalisées.
-
-Côté App Service, les paramètres à poser :
-
-| Paramètre | Valeur | Pourquoi |
-|---|---|---|
-| `WEBSITES_ENABLE_APP_SERVICE_STORAGE` | `true` | Sans lui, `/home` est éphémère et les deux problèmes ci-dessus se produisent à chaque redéploiement |
-| `WEBSITES_PORT` | `8080` | Le port exposé par l'image |
-| `ConnectionStrings__Default` | `Data Source=/home/donnees/respond.db` | `/home` est le seul chemin persistant |
-| `Respond__DossierCles` | `/home/cles` | Idem |
-| `Respond__CleDemo` | la clé Groq | À poser ici, jamais dans l'image |
-
-**Une seule instance.** SQLite en mode WAL ne supporte pas plusieurs
-processus écrivant à travers un partage réseau, et `/home` en est un. La mise
-à l'échelle horizontale demanderait de changer de moteur de base, pas de
-changer un réglage.
-
-Activer aussi **Always On** : sans lui App Service arrête le conteneur après
-vingt minutes d'inactivité, et la première visite suivante attend le
-redémarrage complet.
-
-### Workflow de publication
-
-`deploiement.yml` construit l'image, la publie sur GitHub Container Registry
-et la déploie. Il se déclenche à la main ou sur une étiquette `v*`, **jamais
-sur une poussée vers `main`** : un déploiement doit être une décision, pas un
-effet de bord d'un commit.
-
-L'image est étiquetée par le numéro de version, ou par le hachage du commit à
-défaut — jamais seulement `latest`. Une étiquette mouvante rend impossible de
-dire quelle version tourne, et donc de revenir en arrière.
-
-Ce qu'il faut configurer côté GitHub :
-
-- variable `AZURE_NOM_APPLICATION` : le nom de l'App Service ;
-- secret `AZURE_PROFIL_PUBLICATION` : le profil de publication, à récupérer
-  depuis le portail Azure ;
-- un environnement `production`, où une règle de validation manuelle peut
-  être exigée avant toute mise en ligne.
-
-Si le paquet GHCR reste privé, App Service a besoin des identifiants du
-registre (`DOCKER_REGISTRY_SERVER_URL`, `_USERNAME`, `_PASSWORD` avec un jeton
-ayant la portée `read:packages`). Le rendre public évite ce secret
-supplémentaire : l'image ne contient aucune clé.
 
 ## Intégration continue
 
