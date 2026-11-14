@@ -91,7 +91,11 @@ L'application se construit en image Docker et attend deux volumes persistants.
 
 ```
 docker build -t respond .
-docker run -p 8080:8080   -e Respond__CleDemo="votre_cle"   -v respond-donnees:/donnees   -v respond-cles:/cles   respond
+docker run -p 8080:8080 \
+  -e Respond__CleDemo="votre_cle" \
+  -v respond-donnees:/donnees \
+  -v respond-cles:/cles \
+  respond
 ```
 
 **Les deux volumes sont obligatoires.** Sans `/donnees`, la base disparaît à
