@@ -1,0 +1,49 @@
+# Configuration de gitleaks.
+#
+# Part des règles par défaut, qui couvrent les fournisseurs courants, et y
+# ajoute ce qui est propre à ce projet.
+
+title = "Respond"
+
+[extend]
+useDefault = true
+
+# ── Règles ajoutées ────────────────────────────────────────────────────────
+
+[[rules]]
+id = "cle-groq"
+description = "Clé API Groq"
+# Groq préfixe ses clés par gsk_ suivi d'une cinquantaine de caractères.
+regex = '''gsk_[A-Za-z0-9]{40,}'''
+keywords = ["gsk_"]
+
+[[rules]]
+id = "cle-respond-en-dur"
+description = "Clé de démonstration écrite en dur plutôt que lue dans la configuration"
+# Attrape le cas précis que ce projet doit éviter : quelqu'un qui, pour
+# déboguer, remplace la lecture de configuration par la valeur elle-même.
+regex = '''(?i)cledemo\s*[:=]\s*["'][^"'\s]{12,}["']'''
+keywords = ["cledemo"]
+
+# ── Exclusions ─────────────────────────────────────────────────────────────
+
+[allowlist]
+description = "Chemins et valeurs sans secret réel"
+
+paths = [
+  '''(^|/)obj/''',
+  '''(^|/)bin/''',
+  '''\.sarif$''',
+  # Le fichier de verrouillage NuGet contient des empreintes en base 64 qui
+  # ressemblent à des secrets sans en être.
+  '''packages\.lock\.json$''',
+]
+
+regexes = [
+  # Valeurs factices utilisées par les tests. Elles sont volontairement
+  # reconnaissables pour qu'une vraie clé ne puisse pas se cacher derrière.
+  '''gsk_cle_de_test_sans_valeur''',
+  '''gsk_secret_de_test''',
+  '''gsk_fausse_cle_de_test''',
+  '''votre_cle''',
+]

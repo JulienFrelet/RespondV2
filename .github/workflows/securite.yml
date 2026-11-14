@@ -1,0 +1,63 @@
+name: Sécurité
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Une analyse hebdomadaire attrape ce qui n'existait pas au moment du commit :
+  # une clé publiée aujourd'hui peut n'être reconnue comme telle que demain.
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+
+  secrets:
+    name: Recherche de secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      # L'historique complet, pas seulement le dernier commit : une clé
+      # supprimée dans un commit ultérieur reste lisible dans celui qui l'a
+      # introduite, et c'est précisément ce cas qu'il faut détecter.
+      - name: Récupérer le code et tout l'historique
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # Le binaire officiel plutôt que l'action GitHub : celle-ci demande une
+      # licence pour les dépôts d'organisation, et la version épinglée rend
+      # l'analyse reproductible.
+      - name: Installer gitleaks
+        env:
+          VERSION: 8.21.2
+        run: |
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+          ./gitleaks version
+
+      - name: Analyser tout l'historique
+        run: |
+          ./gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --redact \
+            --verbose \
+            --report-format sarif \
+            --report-path gitleaks.sarif
+
+      # Le rapport est conservé même en cas d'échec : c'est justement quand
+      # l'analyse trouve quelque chose qu'on a besoin de le lire.
+      - name: Publier le rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-gitleaks
+          path: gitleaks.sarif
+          retention-days: 30

@@ -1,0 +1,30 @@
+# Ce qui ne doit pas entrer dans le contexte de construction.
+#
+# Au-dela du gain de temps, c'est une mesure de securite : tout fichier copie
+# dans le contexte peut finir dans une couche de l'image, meme si une etape
+# ulterieure le supprime. Les couches restent lisibles.
+
+**/bin/
+**/obj/
+**/.vs/
+.git/
+.github/
+.claude/
+
+# Secrets et donnees locales : rien de tout ceci ne doit atteindre une image.
+cles-protection/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/appsettings.Development.json
+**/*.user
+.env
+*.env
+
+# Materiel de travail personnel
+prompt/
+
+# Documentation : inutile a l'execution
+README.md
+LICENSE
+docs/

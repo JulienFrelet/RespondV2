@@ -1,0 +1,115 @@
+name: Qualité
+
+# Tourne sur chaque poussée et chaque pull request vers main. Un défaut
+# détecté ici l'est avant la fusion, pas après.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Les permissions sont réduites au strict nécessaire plutôt que laissées au
+# défaut du dépôt : un workflow qui ne fait que lire n'a aucune raison de
+# pouvoir écrire.
+permissions:
+  contents: read
+
+jobs:
+
+  # ── Compilation et tests ────────────────────────────────────────────────
+  tests:
+    name: Compilation et tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Restauration séparée du build pour que l'échec dise lequel des deux a
+      # cassé, plutôt qu'un message mêlant les deux.
+      - name: Restaurer les dépendances
+        run: dotnet restore
+
+      # Les avertissements ne sont pas bloquants dans ce projet, mais ils sont
+      # affichés : un avertissement ignoré longtemps finit par cacher une
+      # vraie erreur.
+      - name: Compiler
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Exécuter les tests avec couverture
+        run: >
+          dotnet test --no-build --configuration Release
+          --logger "trx;LogFileName=tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./couverture
+
+      - name: Publier le rapport de couverture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: couverture
+          path: ./couverture
+          retention-days: 14
+
+  # ── Dépendances vulnérables ─────────────────────────────────────────────
+  dependances:
+    name: Dépendances vulnérables
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Installer le SDK .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurer les dépendances
+        run: dotnet restore
+
+      # Les paquets transitifs sont inclus : la vulnérabilité arrive presque
+      # toujours par une dépendance qu'on n'a pas choisie soi-même. La version
+      # Electron de ce projet comptait 22 vulnérabilités, toutes transitives.
+      - name: Chercher des paquets vulnérables
+        run: |
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee rapport.txt
+
+          if grep -q "a le ou les packages vulnérables\|has the following vulnerable packages" rapport.txt; then
+            echo "::error::Des paquets vulnérables ont été trouvés."
+            exit 1
+          fi
+
+          echo "Aucun paquet vulnérable."
+
+  # ── Construction de l'image ─────────────────────────────────────────────
+  image:
+    name: Construction de l'image Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Préparer Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # L'image est construite mais pas publiée : le but est de vérifier que
+      # le Dockerfile tient, pas de livrer. La publication viendra avec le
+      # déploiement, dans un workflow séparé déclenché par une étiquette.
+      #
+      # Les tests tournent pendant la construction, donc un échec ici signale
+      # soit un Dockerfile cassé, soit un test qui ne passe pas dans un
+      # environnement Linux propre.
+      - name: Construire
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
