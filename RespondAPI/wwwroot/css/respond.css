@@ -129,6 +129,18 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+/*
+  Deux panneaux empiles l'un sur l'autre se touchaient, faute de marge : la
+  vue Parametres se lisait comme un seul bloc coupe en deux plutot que comme
+  deux sujets distincts.
+
+  Le selecteur vise les enfants directs d'une vue, donc uniquement les
+  panneaux empiles. Ceux de Generer et de l'Historique sont places dans une
+  grille qui gere deja son propre espacement : les inclure ici decalerait la
+  colonne de droite vers le bas.
+*/
+.vue > .panneau + .panneau { margin-top: 20px; }
+
 .panneau h2 {
   margin: 0 0 14px;
   font-size: 0.78rem;
