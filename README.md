@@ -17,6 +17,27 @@ Vous choisissez un profil d'entreprise — métier, ton, signature — vous coll
 l'email auquel répondre, et l'application rédige une réponse prête à relire.
 Rien n'est jamais envoyé automatiquement : vous relisez toujours avant.
 
+![L'écran de génération : un client mécontent à gauche, la réponse rédigée à droite](docs/captures/generer.jpg)
+
+Le champ *Contexte* porte ce que l'IA ne peut pas deviner — ici les créneaux
+d'intervention et la cause de la panne. Sans lui, la réponse promet un rappel ;
+avec lui, elle propose deux dates.
+
+### Les profils
+
+![La liste des profils, l'un d'eux déplié sur son contenu complet](docs/captures/profils.jpg)
+
+Un profil décrit le métier, le ton et la signature. Quatre sont fournis pour
+qu'un visiteur puisse générer sans rien remplir ; les siens s'ajoutent à côté.
+
+### L'historique
+
+![L'historique en mode clair, une réponse sélectionnée](docs/captures/historique-mode-clair.jpg)
+
+Sans compte, et pourtant séparé : un cookie de session anonyme et signé
+cloisonne les visiteurs. Le thème clair ou sombre suit le système par défaut
+et se force d'un clic.
+
 ## Pile technique
 
 | Couche | Technologie |
