@@ -481,3 +481,8 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 prompt/
+
+# Base SQLite locale generee au demarrage
+*.db
+*.db-shm
+*.db-wal
