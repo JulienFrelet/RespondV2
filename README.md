@@ -81,21 +81,24 @@ dotnet user-secrets set "Respond:CleDemo" "votre_cle" --project RespondAPI
 
 ## Déploiement
 
-L'application se construit en image Docker et attend deux volumes persistants.
+L'application se construit en image Docker et se déploie sur Azure App Service.
+
+### Variables d'environnement
 
 | Variable | Rôle |
 |---|---|
 | `Respond__CleDemo` | Clé Groq du mode démonstration. **Jamais dans l'image ni dans le dépôt.** |
-| `ConnectionStrings__Default` | Chemin de la base SQLite, sur un volume persistant |
+| `ConnectionStrings__Default` | Chemin de la base SQLite, sur un stockage persistant |
 | `Respond__DossierCles` | Dossier des clés signant les cookies de session |
+
+### En local
 
 ```
 docker build -t respond .
-docker run -p 8080:8080 \
-  -e Respond__CleDemo="votre_cle" \
-  -v respond-donnees:/donnees \
-  -v respond-cles:/cles \
-  respond
+```
+
+```
+docker run -p 8080:8080 -e Respond__CleDemo="votre_cle" -v respond-donnees:/donnees -v respond-cles:/cles respond
 ```
 
 **Les deux volumes sont obligatoires.** Sans `/donnees`, la base disparaît à
@@ -104,19 +107,68 @@ tous les cookies de session deviennent invalides et chaque visiteur perd son
 historique. Le dossier des clés est un secret : qui le lit peut forger des
 cookies de session.
 
+### Sur Azure App Service
+
+Un plan **Linux B1** au minimum : le palier gratuit ne prend pas en charge les
+images personnalisées.
+
+Côté App Service, les paramètres à poser :
+
+| Paramètre | Valeur | Pourquoi |
+|---|---|---|
+| `WEBSITES_ENABLE_APP_SERVICE_STORAGE` | `true` | Sans lui, `/home` est éphémère et les deux problèmes ci-dessus se produisent à chaque redéploiement |
+| `WEBSITES_PORT` | `8080` | Le port exposé par l'image |
+| `ConnectionStrings__Default` | `Data Source=/home/donnees/respond.db` | `/home` est le seul chemin persistant |
+| `Respond__DossierCles` | `/home/cles` | Idem |
+| `Respond__CleDemo` | la clé Groq | À poser ici, jamais dans l'image |
+
+**Une seule instance.** SQLite en mode WAL ne supporte pas plusieurs
+processus écrivant à travers un partage réseau, et `/home` en est un. La mise
+à l'échelle horizontale demanderait de changer de moteur de base, pas de
+changer un réglage.
+
+Activer aussi **Always On** : sans lui App Service arrête le conteneur après
+vingt minutes d'inactivité, et la première visite suivante attend le
+redémarrage complet.
+
+### Workflow de publication
+
+`deploiement.yml` construit l'image, la publie sur GitHub Container Registry
+et la déploie. Il se déclenche à la main ou sur une étiquette `v*`, **jamais
+sur une poussée vers `main`** : un déploiement doit être une décision, pas un
+effet de bord d'un commit.
+
+L'image est étiquetée par le numéro de version, ou par le hachage du commit à
+défaut — jamais seulement `latest`. Une étiquette mouvante rend impossible de
+dire quelle version tourne, et donc de revenir en arrière.
+
+Ce qu'il faut configurer côté GitHub :
+
+- variable `AZURE_NOM_APPLICATION` : le nom de l'App Service ;
+- secret `AZURE_PROFIL_PUBLICATION` : le profil de publication, à récupérer
+  depuis le portail Azure ;
+- un environnement `production`, où une règle de validation manuelle peut
+  être exigée avant toute mise en ligne.
+
+Si le paquet GHCR reste privé, App Service a besoin des identifiants du
+registre (`DOCKER_REGISTRY_SERVER_URL`, `_USERNAME`, `_PASSWORD` avec un jeton
+ayant la portée `read:packages`). Le rendre public évite ce secret
+supplémentaire : l'image ne contient aucune clé.
+
 ## Intégration continue
 
-Trois contrôles tournent à chaque poussée et chaque pull request :
+Quatre contrôles tournent à chaque poussée et chaque pull request :
 
 - compilation et tests sur Linux, avec rapport de couverture ;
 - recherche de paquets vulnérables, dépendances transitives comprises ;
 - recherche de secrets avec `gitleaks` sur **tout l'historique**, pas seulement
   sur le dernier commit — une clé supprimée plus tard reste lisible dans le
   commit qui l'a introduite. Cette analyse tourne aussi chaque lundi, parce
-  qu'une clé publiée aujourd'hui peut n'être reconnue comme telle que demain.
+  qu'une clé publiée aujourd'hui peut n'être reconnue comme telle que demain ;
+- construction de l'image Docker.
 
-L'image Docker est construite en CI, tests inclus : aucune image ne peut être
-produite à partir d'un code dont les tests échouent.
+Les tests tournent **pendant** la construction de l'image, pas à côté : aucune
+image ne peut donc être produite à partir d'un code dont les tests échouent.
 
 ## Méthode de travail
 
