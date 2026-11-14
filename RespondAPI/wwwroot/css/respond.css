@@ -6,10 +6,13 @@
   sombres. Garder l'identite visuelle evite de repartir de zero sur ce qui
   fonctionnait deja.
 
-  Polices systeme uniquement : la version d'origine chargeait Plus Jakarta Sans
+  Polices systeme uniquement. La version d'origine chargeait Plus Jakarta Sans
   depuis Google Fonts, ce qui transmettait l'adresse IP de chaque visiteur a un
-  tiers et cassait l'affichage hors connexion. Les polices seront embarquees
-  localement plus tard ; en attendant la pile systeme fait le travail.
+  tiers et cassait l'affichage hors connexion.
+
+  La pile ci-dessous ne nomme donc que des polices reellement disponibles :
+  declarer une police qu'aucun fichier ne fournit laisse croire a un choix
+  typographique qui n'a jamais lieu.
 */
 
 :root {
@@ -96,11 +99,11 @@
 
 body {
   margin: 0;
-  padding: 0 20px 56px;
+  padding: 0;
   background: var(--bg);
   color: var(--text-body);
-  font: 15px/1.6 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
-        'Segoe UI', Roboto, sans-serif;
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text',
+        'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -122,12 +125,12 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 20px;
   box-shadow: var(--shadow-sm);
 }
 
 .panneau h2 {
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -139,7 +142,7 @@ body {
 
 label {
   display: block;
-  margin: 16px 0 6px;
+  margin: 13px 0 5px;
   font-weight: 600;
   font-size: 0.86rem;
   color: var(--text-body);
@@ -178,8 +181,8 @@ input[readonly] {
 }
 
 .longueurs {
-  margin: 20px 0 0;
-  padding: 12px 16px;
+  margin: 14px 0 0;
+  padding: 10px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
@@ -211,7 +214,7 @@ button {
    cette teinte, donc l'oeil y va directement. */
 .bouton-principal {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 14px;
   padding: 12px 18px;
   border: none;
   background: var(--cta);
@@ -287,7 +290,7 @@ button {
 .application {
   display: grid;
   grid-template-columns: 232px 1fr;
-  min-height: 100vh;
+  height: 100dvh;
 }
 
 @media (max-width: 880px) {
@@ -417,15 +420,15 @@ button {
 /* ── Contenu et vues ───────────────────────────────────────────────────── */
 
 .contenu {
-  padding: 30px 28px 56px;
+  padding: 22px 26px;
   max-width: 1180px;
 }
 
-.entete-vue { margin-bottom: 22px; }
+.entete-vue { margin-bottom: 14px; }
 
 .entete-vue h1 {
   margin: 0 0 6px;
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -655,4 +658,110 @@ button {
   font-size: 1.02rem;
   text-transform: none;
   letter-spacing: normal;
+}
+
+
+/*
+  ── Occupation de la hauteur ───────────────────────────────────────────────
+
+  Avant, la page se dimensionnait sur son contenu : les zones de texte avaient
+  une hauteur fixe en lignes, et le total depassait l'ecran d'environ deux
+  cents pixels. Il fallait donc faire defiler pour atteindre le bouton
+  principal, alors que le panneau de droite restait aux trois quarts vide.
+
+  Desormais l'application occupe exactement la hauteur de la fenetre et ce qui
+  reste est donne aux zones de texte. Sur un grand ecran elles grandissent, sur
+  un petit elles se reduisent jusqu'a leur minimum et c'est le panneau qui
+  defile, jamais la page entiere : la navigation et l'en-tete restent visibles.
+
+  L'unite est dvh et non vh : sur mobile, vh compte la barre d'adresse du
+  navigateur comme si elle n'existait pas, ce qui coupe le bas de la page.
+*/
+
+@media (min-width: 881px) {
+
+  /* overflow-y: auto et non hidden. Avec hidden, une vue plus haute que la
+     fenetre voyait son bas purement coupe, sans aucun moyen de l'atteindre :
+     c'est le cas de l'historique quand la liste est longue. Ici la zone de
+     contenu defile si elle en a besoin, pendant que la navigation et
+     l'en-tete restent en place. */
+  .contenu {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* Les vues masquees le sont par l'attribut hidden, dont le display: none
+     serait annule par la regle ci-dessous : d'ou le :not([hidden]). */
+  .contenu > .vue:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .entete-vue { flex: none; }
+
+  .colonnes {
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  /* min-height: 0 est indispensable : sans lui un element de grille refuse de
+     devenir plus petit que son contenu, et le panneau deborde au lieu de
+     defiler. */
+  .panneau {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* La zone du message recu absorbe la place restante. Le minimum garantit
+     qu'elle reste utilisable sur un ecran bas. */
+  #txt-email,
+  #txt-corps,
+  #detail-corps {
+    flex: 1;
+    min-height: 96px;
+    resize: none;
+  }
+
+  /* Le panneau de resultat suit la meme logique, sinon la zone de reponse
+     garderait sa hauteur fixe au milieu d'un panneau etire.
+
+     Le :not([hidden]) n'est pas une precaution de style : display: flex
+     l'emporte sur le display: none que porte l'attribut hidden, et sans lui
+     le bloc de resultat occupait sa place alors qu'il etait masque. */
+  #resultat:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Le message d'attente se centre plutot que de rester colle en haut d'un
+     panneau vide : c'est la meme place occupee, mais elle ne se lit plus
+     comme un oubli. */
+  .attente:not([hidden]) {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+  }
+
+  /* Les vues en liste gardent un defilement interne au panneau. */
+  .contenu > .vue:not([hidden]) > .panneau { overflow-y: auto; }
+}
+
+/*
+  Sous 881 pixels la mise en page passe sur une colonne et la page redevient
+  defilante : forcer la hauteur de la fenetre y ecraserait les champs.
+*/
+@media (max-width: 880px) {
+  .application { height: auto; min-height: 100dvh; }
+  .contenu { padding-bottom: 32px; }
 }
