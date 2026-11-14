@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using RespondMetier.Models;
 
 namespace RespondData
@@ -57,7 +57,11 @@ namespace RespondData
                 entity.HasKey(profil => profil.Id);
                 entity.Property(profil => profil.Id).ValueGeneratedOnAdd();
                 entity.Property(profil => profil.Nom).IsRequired();
-                entity.HasIndex(profil => profil.Nom).IsUnique();
+                entity.Property(profil => profil.SessionId).IsRequired();
+
+                // Le nom est unique par visiteur, pas globalement : deux
+                // visiteurs ont le droit d'appeler leur profil « SAV ».
+                entity.HasIndex(profil => new { profil.SessionId, profil.Nom }).IsUnique();
                 entity.Property(profil => profil.Service).IsRequired();
                 entity.Property(profil => profil.Entreprise).IsRequired();
                 entity.Property(profil => profil.Langue).IsRequired();
@@ -87,10 +91,11 @@ namespace RespondData
                 entity.Property(reponse => reponse.Id).ValueGeneratedOnAdd();
                 entity.Property(reponse => reponse.Date).IsRequired();
                 entity.Property(reponse => reponse.Texte).IsRequired();
+                entity.Property(reponse => reponse.SessionId).IsRequired();
 
-                // The history is almost always read sorted by date, and trimmed
-                // by date when it exceeds its size limit.
-                entity.HasIndex(reponse => reponse.Date);
+                // Chaque lecture filtre sur la session puis trie par date :
+                // l'index composite couvre les deux d'un coup.
+                entity.HasIndex(reponse => new { reponse.SessionId, reponse.Date });
             });
         }
 

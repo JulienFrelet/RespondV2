@@ -1,8 +1,9 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using RespondAPI.Clients;
+using RespondAPI.Services;
 using RespondData;
 using RespondData.DAO;
 using RespondMetier.Data.Interfaces;
@@ -19,11 +20,32 @@ builder.Services.AddControllers()
 
 builder.Services.AddOpenApi();
 
+// Plafond sur la taille d'une requete. Le constructeur de prompt refuse deja
+// un message trop long, mais il le fait apres lecture : ce plafond-ci coupe
+// avant, et protege aussi les routes qui n'ont rien a voir avec le prompt.
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(
+    options => options.MultipartBodyLengthLimit = 128 * 1024);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 128 * 1024;
+
+    // Le serveur n'annonce plus son nom : une version connue est une
+    // indication offerte a qui cherche une faille a exploiter.
+    options.AddServerHeader = false;
+});
+
 // Configure the database.
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddScoped<InitialiseurBaseDeDonnees>();
+
+// Identifie un visiteur sans compte. Le cookie porte une valeur signee par la
+// pile de protection des donnees : un identifiant brut serait forgeable, et
+// n'importe qui pourrait lire l'historique d'un autre en recopiant sa valeur.
+builder.Services.AddDataProtection();
+builder.Services.AddSingleton<ISessionVisiteur, SessionVisiteur>();
 
 // Register DAOs.
 builder.Services.AddScoped<IProfilDAO, ProfilDAO>();
@@ -77,6 +99,15 @@ using (IServiceScope portee = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    // HSTS indique au navigateur de n'utiliser que HTTPS pour ce domaine,
+    // y compris si l'utilisateur tape l'adresse sans protocole. Absent en
+    // developpement, ou il bloquerait l'acces en clair a localhost.
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using RespondAPI.Dtos;
+using RespondAPI.Services;
 using RespondMetier.Data.Interfaces;
 using RespondMetier.Exceptions;
 using RespondMetier.Models;
@@ -20,6 +21,7 @@ namespace RespondAPI.Controllers
         private readonly IGenerationService generation;
         private readonly IProfilDAO profils;
         private readonly IConfiguration configuration;
+        private readonly ISessionVisiteur session;
 
         #endregion
 
@@ -34,12 +36,17 @@ namespace RespondAPI.Controllers
         /// used to read the shared demo key, which lives in user secrets during
         /// development and in an environment variable once deployed
         /// </param>
+        /// <param name="session">supplies the visitor's anonymous identifier</param>
         public ReponsesController(
-            IGenerationService generation, IProfilDAO profils, IConfiguration configuration)
+            IGenerationService generation,
+            IProfilDAO profils,
+            IConfiguration configuration,
+            ISessionVisiteur session)
         {
             this.generation = generation;
             this.profils = profils;
             this.configuration = configuration;
+            this.session = session;
         }
 
         #endregion
@@ -57,7 +64,9 @@ namespace RespondAPI.Controllers
         public async Task<ActionResult<ReponseDto>> Generer(
             [FromBody] DemandeReponseDto demandeDto, CancellationToken jeton)
         {
-            Profil? profil = this.profils.ChargerParId(demandeDto.ProfilId);
+            string sessionId = this.session.ObtenirOuCreer(this.HttpContext);
+
+            Profil? profil = this.profils.ChargerParId(demandeDto.ProfilId, sessionId);
 
             if (profil == null)
             {
@@ -81,6 +90,7 @@ namespace RespondAPI.Controllers
             demande.Contexte = demandeDto.Contexte;
             demande.Longueur = demandeDto.Longueur;
             demande.Regles = demandeDto.Regles ?? new ReglesRedaction();
+            demande.SessionId = sessionId;
 
             try
             {

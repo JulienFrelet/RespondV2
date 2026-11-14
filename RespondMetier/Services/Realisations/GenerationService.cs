@@ -1,4 +1,4 @@
-using RespondMetier.Data.Interfaces;
+﻿using RespondMetier.Data.Interfaces;
 using RespondMetier.Models;
 using RespondMetier.Services.Interfaces;
 
@@ -77,6 +77,7 @@ namespace RespondMetier.Services.Realisations
             ReponseGeneree entree = new ReponseGeneree();
             entree.Date = DateTime.Now;
             entree.NomProfil = demande.Profil.Nom;
+            entree.SessionId = demande.SessionId;
 
             // The label, never the secret: a history row must stay safe to
             // read, to export and to display.
@@ -86,7 +87,7 @@ namespace RespondMetier.Services.Realisations
             entree.Texte = resultat.Corps;
 
             this.historique.Inserer(entree);
-            this.historique.LimiterA(this.limiteHistorique);
+            this.historique.LimiterA(demande.SessionId, this.limiteHistorique);
         }
 
         #endregion

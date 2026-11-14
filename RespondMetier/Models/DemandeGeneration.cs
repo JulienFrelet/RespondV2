@@ -1,4 +1,4 @@
-namespace RespondMetier.Models
+﻿namespace RespondMetier.Models
 {
     /// <summary>
     /// Everything needed to produce one reply: the context to write from,
@@ -13,6 +13,7 @@ namespace RespondMetier.Models
         private LongueurReponse longueur;
         private string emailRecu;
         private string contexte;
+        private string sessionId;
 
         #endregion
 
@@ -68,6 +69,20 @@ namespace RespondMetier.Models
             set { contexte = value; }
         }
 
+        /// <summary>
+        /// Gets or sets the visitor asking for this reply.
+        /// </summary>
+        /// <remarks>
+        /// Carried by the request rather than passed as a separate argument,
+        /// so that a caller cannot build a request and forget who it belongs
+        /// to: the history entry would then be visible to everyone.
+        /// </remarks>
+        public string SessionId
+        {
+            get { return sessionId; }
+            set { sessionId = value; }
+        }
+
         #endregion
 
         #region Constructors
@@ -82,6 +97,7 @@ namespace RespondMetier.Models
             longueur = LongueurReponse.Courte;
             emailRecu = string.Empty;
             contexte = string.Empty;
+            sessionId = string.Empty;
         }
 
         #endregion
