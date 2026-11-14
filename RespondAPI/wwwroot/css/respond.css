@@ -711,8 +711,14 @@ button {
 
   /* min-height: 0 est indispensable : sans lui un element de grille refuse de
      devenir plus petit que son contenu, et le panneau deborde au lieu de
-     defiler. */
-  .panneau {
+     defiler.
+
+     Le :not([hidden]) l'est tout autant : display: flex l'emporte sur le
+     display: none de l'attribut hidden. Sans lui, le panneau de detail de
+     l'historique restait visible alors qu'aucune reponse n'etait
+     selectionnee, et ses deux boutons Copier et Supprimer se retrouvaient
+     seuls sous une zone de texte vide. */
+  .panneau:not([hidden]) {
     display: flex;
     flex-direction: column;
     min-height: 0;
