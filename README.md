@@ -80,8 +80,11 @@ Chaque point ci-dessous est une décision, pas un réglage par défaut.
 - **Clés API.** Jamais dans le dépôt, jamais dans un log, jamais dans un
   message d'erreur. `CleApi.ToString()` est redéfini pour ne pas pouvoir
   révéler le secret par accident. Un test le vérifie.
-- **Limitation de débit** par adresse sur la génération, et plafond sur la
-  taille des messages : la démonstration tourne sur une clé partagée.
+- **Limitation de débit** par adresse, sur la génération comme sur les
+  écritures en base, et plafond sur la taille des messages. Le nombre de
+  profils est aussi plafonné par visiteur — mais un visiteur n'est qu'un
+  cookie, qu'il suffit de ne pas renvoyer pour repartir à zéro : c'est
+  l'adresse, que le visiteur ne choisit pas, qui borne réellement.
 - **En-têtes** : politique de sécurité du contenu stricte envoyée en en-tête
   HTTP et non en balise `meta`, `nosniff`, `Referrer-Policy`, HSTS en
   production, en-tête `Server` supprimé.
