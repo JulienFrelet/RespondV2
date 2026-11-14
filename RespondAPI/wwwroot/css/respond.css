@@ -1,35 +1,65 @@
 /*
   Styles de Respond.
 
-  Polices systeme uniquement : aucun appel a un service de polices distant,
-  donc aucune fuite de l'adresse IP du visiteur vers un tiers, et la page
-  s'affiche aussi vite hors connexion.
+  La palette est reprise de la premiere version de l'application : teal en
+  couleur primaire, orange pour l'action principale, navy pour les surfaces
+  sombres. Garder l'identite visuelle evite de repartir de zero sur ce qui
+  fonctionnait deja.
+
+  Polices systeme uniquement : la version d'origine chargeait Plus Jakarta Sans
+  depuis Google Fonts, ce qui transmettait l'adresse IP de chaque visiteur a un
+  tiers et cassait l'affichage hors connexion. Les polices seront embarquees
+  localement plus tard ; en attendant la pile systeme fait le travail.
 */
 
 :root {
-  --fond: #f6f7f9;
-  --surface: #ffffff;
-  --bordure: #d8dce3;
-  --texte: #1b1f27;
-  --texte-doux: #5c6472;
-  --accent: #2f5bd7;
-  --accent-sombre: #24479f;
-  --erreur: #c0372b;
-  --succes: #1f7a4d;
-  --rayon: 10px;
+  --primary:       #0D9488;
+  --primary-dark:  #0F766E;
+  --primary-light: #CCFBF1;
+  --primary-pale:  #F0FDFA;
+  --cta:           #F97316;
+  --cta-dark:      #EA6C0A;
+
+  --bg:            #F0FDFA;
+  --surface:       #FFFFFF;
+  --navy:          #0B1120;
+
+  --text:          #134E4A;
+  --text-body:     #1F2937;
+  --text-muted:    #6B7280;
+  --text-light:    #9CA3AF;
+
+  --border:        #E5E7EB;
+  --border-focus:  #0D9488;
+
+  --danger:        #EF4444;
+  --danger-light:  #FEF2F2;
+  --success:       #10B981;
+
+  --radius-sm:     6px;
+  --radius:        12px;
+  --radius-lg:     16px;
+
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:        0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-md:     0 8px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+
+  --transition:    all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fond: #14171c;
-    --surface: #1d2127;
-    --bordure: #333a45;
-    --texte: #e8eaee;
-    --texte-doux: #9aa3b2;
-    --accent: #6f93f5;
-    --accent-sombre: #8aa8f8;
-    --erreur: #f08a7f;
-    --succes: #5fc98f;
+    --bg:            #0F172A;
+    --surface:       #1E293B;
+    --navy:          #060B16;
+    --text:          #A7F3D0;
+    --text-body:     #E2E8F0;
+    --text-muted:    #94A3B8;
+    --text-light:    #64748B;
+    --border:        #334155;
+    --primary-pale:  #0D2D28;
+    --primary-light: #134E4A;
+    --danger-light:  #2D1515;
   }
 }
 
@@ -37,171 +67,235 @@
 
 body {
   margin: 0;
-  padding: 0 16px 48px;
-  background: var(--fond);
-  color: var(--texte);
-  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 0 20px 56px;
+  background: var(--bg);
+  color: var(--text-body);
+  font: 15px/1.6 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont,
+        'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* ── En-tete ───────────────────────────────────────────────────────────── */
+
 .entete {
-  max-width: 1100px;
+  max-width: 1140px;
   margin: 0 auto;
-  padding: 32px 0 20px;
+  padding: 36px 0 24px;
+}
+
+.marque {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  border-radius: var(--radius-sm);
+  object-fit: contain;
 }
 
 .entete h1 {
   margin: 0;
-  font-size: 1.9rem;
-  letter-spacing: -0.02em;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text);
 }
 
 .accroche {
-  margin: 4px 0 14px;
-  color: var(--texte-doux);
+  margin: 6px 0 18px;
+  color: var(--text-muted);
 }
 
 .bandeau-demo {
   margin: 0;
-  padding: 10px 14px;
-  border: 1px solid var(--bordure);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--rayon);
-  background: var(--surface);
-  color: var(--texte-doux);
+  padding: 12px 16px;
+  border: 1px solid var(--primary-light);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--primary-pale);
+  color: var(--text);
   font-size: 0.88rem;
+  font-weight: 500;
 }
 
+/* ── Panneaux ──────────────────────────────────────────────────────────── */
+
 .colonnes {
-  max-width: 1100px;
+  max-width: 1140px;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 24px;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 880px) {
   .colonnes { grid-template-columns: 1fr; }
 }
 
 .panneau {
   background: var(--surface);
-  border: 1px solid var(--bordure);
-  border-radius: var(--rayon);
-  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
 }
 
 .panneau h2 {
-  margin: 0 0 16px;
-  font-size: 1.05rem;
+  margin: 0 0 18px;
+  font-size: 0.78rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--texte-doux);
+  letter-spacing: 0.08em;
+  color: var(--primary);
 }
+
+/* ── Champs ────────────────────────────────────────────────────────────── */
 
 label {
   display: block;
-  margin: 14px 0 5px;
+  margin: 16px 0 6px;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
+  color: var(--text-body);
 }
 
 select, textarea, input[type="text"] {
   width: 100%;
-  padding: 9px 11px;
-  border: 1px solid var(--bordure);
-  border-radius: 8px;
-  background: var(--fond);
-  color: var(--texte);
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-body);
   font: inherit;
   resize: vertical;
+  transition: var(--transition);
+}
+
+@media (prefers-color-scheme: dark) {
+  select, textarea, input[type="text"] { background: #0F172A; }
 }
 
 select:focus, textarea:focus, input[type="text"]:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
 }
 
-input[readonly] { color: var(--texte-doux); }
+::placeholder { color: var(--text-light); }
+
+input[readonly] {
+  background: var(--primary-pale);
+  color: var(--text);
+  font-weight: 600;
+}
 
 .indice {
-  margin: 5px 0 0;
-  color: var(--texte-doux);
-  font-size: 0.82rem;
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .longueurs {
-  margin: 18px 0 0;
-  padding: 10px 14px;
-  border: 1px solid var(--bordure);
-  border-radius: 8px;
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 .longueurs legend {
   padding: 0 6px;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
 .longueurs label {
   display: inline-block;
-  margin: 0 18px 0 0;
-  font-weight: 400;
+  margin: 0 20px 0 0;
+  font-weight: 500;
 }
+
+.longueurs input[type="radio"] { accent-color: var(--primary); }
+
+/* ── Boutons ───────────────────────────────────────────────────────────── */
 
 button {
   font: inherit;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: var(--transition);
 }
 
+/* L'action principale est en orange : c'est le seul element de la page dans
+   cette teinte, donc l'oeil y va directement. */
 .bouton-principal {
   width: 100%;
-  margin-top: 18px;
-  padding: 11px 16px;
+  margin-top: 20px;
+  padding: 12px 18px;
   border: none;
-  background: var(--accent);
+  background: var(--cta);
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: var(--shadow-sm);
 }
 
-.bouton-principal:hover:not(:disabled) { background: var(--accent-sombre); }
+.bouton-principal:hover:not(:disabled) {
+  background: var(--cta-dark);
+  box-shadow: var(--shadow);
+}
 
 .bouton-principal:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: progress;
+  box-shadow: none;
 }
 
 .actions {
   display: flex;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
 .bouton-secondaire {
   flex: 1;
-  padding: 9px 14px;
-  border: 1px solid var(--bordure);
-  background: var(--fond);
-  color: var(--texte);
+  padding: 10px 16px;
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
 }
 
-.bouton-secondaire:hover { border-color: var(--accent); }
+.bouton-secondaire:hover { background: rgba(13, 148, 136, 0.08); }
 
 .bouton-secondaire.confirme {
-  border-color: var(--succes);
-  color: var(--succes);
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.08);
 }
+
+/* ── Resultat ──────────────────────────────────────────────────────────── */
 
 .attente {
   margin: 0;
-  padding: 28px 0;
-  color: var(--texte-doux);
+  padding: 44px 20px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
   text-align: center;
 }
 
 .erreur {
-  margin: 12px 0 0;
-  color: var(--erreur);
-  font-size: 0.88rem;
+  margin: 14px 0 0;
+  padding: 0;
+  color: var(--danger);
+  font-size: 0.86rem;
+  font-weight: 500;
   min-height: 1.2em;
+}
+
+.erreur:not(:empty) {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-light);
 }
