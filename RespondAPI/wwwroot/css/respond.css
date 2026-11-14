@@ -264,6 +264,29 @@ button {
 
 .bouton-secondaire:hover { background: rgba(13, 148, 136, 0.08); }
 
+/*
+  Par defaut les boutons d'une rangee se partagent la largeur a parts egales,
+  ce qui convient a deux actions de meme poids : Copier et Regenerer, Copier
+  et Supprimer.
+
+  Dans les Parametres les deux actions ne sont pas equivalentes. Etirees, la
+  rangee donnait trois fois plus de surface a Oublier ma cle qu'a Utiliser ma
+  cle, et l'oeil allait vers l'annulation plutot que vers l'action : la taille
+  d'un bouton est une indication d'importance. Ici chacun garde donc la
+  largeur de son libelle.
+*/
+.actions.compactes {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+/* max-width empeche le libelle le plus long de depasser le panneau sur un
+   ecran etroit : le bouton se reduit et son texte passe a la ligne. */
+.actions.compactes > button {
+  flex: none;
+  max-width: 100%;
+}
+
 .bouton-secondaire.confirme {
   border-color: var(--success);
   color: var(--success);
