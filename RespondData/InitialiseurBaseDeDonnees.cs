@@ -54,6 +54,7 @@ namespace RespondData
         public void Initialiser()
         {
             this.context.Database.EnsureCreated();
+            this.CreerLesTablesManquantes();
 
             List<string> dejaPresents = this.context.Set<Profil>()
                 .Where(profil => profil.SessionId == string.Empty)
@@ -71,6 +72,39 @@ namespace RespondData
 
             this.context.Set<Profil>().AddRange(aInserer);
             this.context.SaveChanges();
+        }
+
+        /// <summary>
+        /// Creates the tables the database does not have yet
+        /// </summary>
+        /// <remarks>
+        /// EnsureCreated ne cree le schema que sur une base vide : sur une
+        /// base existante, il ne fait rien du tout. Une table ajoutee au
+        /// modele apres coup n'apparaissait donc jamais en production, et
+        /// toute requete la touchant echouait sur « no such table ». Le
+        /// defaut ne se voit pas en developpement, ou l'on repart d'une base
+        /// neuve sans y penser.
+        ///
+        /// Le script est genere par EF a partir du modele, pas ecrit a la
+        /// main : les types different d'un moteur a l'autre, et une colonne
+        /// mal typee serait pire que pas de table du tout. On se contente
+        /// d'ajouter IF NOT EXISTS, que SQLite et PostgreSQL acceptent tous
+        /// les deux, pour que le script puisse tourner sur une base deja
+        /// peuplee sans rien detruire.
+        ///
+        /// Ce mecanisme ajoute, il ne modifie ni ne supprime rien. Le jour ou
+        /// une colonne changera de type ou disparaitra, il faudra de vraies
+        /// migrations ; tant que le schema ne fait que s'etendre, elles
+        /// seraient un outillage sans emploi.
+        /// </remarks>
+        private void CreerLesTablesManquantes()
+        {
+            string script = this.context.Database.GenerateCreateScript()
+                .Replace("CREATE TABLE \"", "CREATE TABLE IF NOT EXISTS \"")
+                .Replace("CREATE INDEX \"", "CREATE INDEX IF NOT EXISTS \"")
+                .Replace("CREATE UNIQUE INDEX \"", "CREATE UNIQUE INDEX IF NOT EXISTS \"");
+
+            this.context.Database.ExecuteSqlRaw(script);
         }
 
         /// <summary>
